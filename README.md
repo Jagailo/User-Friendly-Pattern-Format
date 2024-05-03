@@ -32,4 +32,25 @@ Parsing result:
 Mega pattern consists of several other patterns. Patterns must be separated by `|` symbol. The search string will be parsed with the pattern that most closely matches the string.
 
 Mega pattern example:
-`<FirstName>-<LastName>-<ID>|<Useless>-<LastName>-<ID>-<Reference>|<FirstName>_<LastName>`.
+`<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>`
+
+Values for parsing:
+- `04-05-2024_fh5_image.png`
+- `https://youtu.be/KoFSQeOAYz4?t=10`
+- `04-05-2024_scan.jpg`
+
+Parsing result:
+
+- Date: "04-05-2024"
+- Name: "fh5_image"
+- Extension: "png"
+----
+- Protocol: "https"
+- Domain: "youtu.be"
+- Page: "KoFSQeOAYz4"
+- FirstParameter.Key: "t"
+- FirstParameter.Value: "10"
+----
+- Date: "04-05-2024"
+- Name: "scan"
+- Extension: "jpg"
