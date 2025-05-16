@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UFP.NET.Standard\UFP.NET.Standard.csproj" />
+    <ProjectReference Include="..\UFP.NET\UFP.NET.csproj" />
+  </ItemGroup>
+
+</Project>
