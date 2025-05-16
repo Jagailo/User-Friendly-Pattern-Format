@@ -1,23 +1,47 @@
-# UFP format (User Friendly Pattern)
+# UFP Format (User Friendly Pattern)
 
-UFP - user-friendly pattern format that is used to find the data in the search string. Pattern consists of 2 parts: static and dynamic.
+UFP - user-friendly pattern format that is used to find data in search strings. Patterns consist of 2 parts: static and dynamic.
 
-Dynamic part (also called variable) is the data that may differ in the searched strings. In the pattern, they must have a unique name and be wrapped in angle brackets (`<`, `>`). For example, `<Date>`, `<Patient.FirstName>`, `<UselessData1>`. Variables cannot be placed next to each other without some kind of separating character.
+## Pattern Components
 
-Static part (also called separator) is the data that never changes in the searched strings. This can be any character except `<`, `>`, and `|`. Also, separators can be of any length.
+### Dynamic Parts (Variables)
+- Data that may differ in searched strings
+- Must have a unique name wrapped in angle brackets (`<`, `>`)
+  - Examples: `<Date>`, `<Patient.FirstName>`, `<UselessData1>`
+- Cannot be placed next to each other without a separator
+- Can be marked as greedy by adding `*` before the closing bracket (e.g., `<StudyUid*>`)
 
-### Example of a pattern and string for parsing
+### Static Parts (Separators)
+- Data that never changes in searched strings
+- Can be any character except `<`, `>`, and `|`
+- Can be of any length
 
-String with data for parsing:
+## Greedy Variables
+A greedy variable (marked with `*`) will match as much text as possible until reaching the next separator. This is useful when:
+- The variable content may contain characters that would normally match subsequent separators
+- You want to capture all remaining text until a specific pattern
+
+Example:
+`<Path*>/<Filename>.<Extension>`
+
+For input `docs/reports/2024/annual_report.pdf`:
+- Path: "docs/reports/2024"
+- Filename: "annual_report"
+- Extension: "pdf"
+
+Without greedy marking, the pattern might incorrectly split on intermediate `/` characters.
+
+## Example of Pattern and String
+
+**String with data for parsing:**
 
 ![image](https://github.com/Jagailo/User-Friendly-Pattern-Format/assets/10468120/8719317d-fafe-4ab0-87ef-c1f226b37dab)
 
-User friendly pattern:
+**User friendly pattern:**
 
 ![image](https://github.com/Jagailo/User-Friendly-Pattern-Format/assets/10468120/af59bcd8-c065-4a5a-973f-88eae2396edf)
 
-Parsing result:
-
+**Parsing result:**
 - Date: "22-04-2024"
 - Phone: "1288724"
 - Patient.FirstName: "Alexey"
@@ -27,20 +51,20 @@ Parsing result:
 - UID: "3111196K001PB8"
 - Extension: "doc"
 
-## Mega pattern
+## Mega Pattern
+A mega pattern consists of several patterns separated by `|`. The parser will use the pattern that most closely matches the input string.
 
-Mega pattern consists of several other patterns. Patterns must be separated by `|` symbol. The search string will be parsed with the pattern that most closely matches the string.
+**Mega pattern example:**
 
-Mega pattern example:
-`<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>`
+`<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>`
 
-Values for parsing:
+**Values for parsing:**
 - `04-05-2024_fh5_image.png`
 - `https://youtu.be/KoFSQeOAYz4?t=10`
 - `04-05-2024_scan.jpg`
+- `1.2.840.52394.3.152.235.2.12.187636473.patient.csv`
 
-Parsing result:
-
+**Parsing result:**
 - Date: "04-05-2024"
 - Name: "fh5_image"
 - Extension: "png"
@@ -54,3 +78,7 @@ Parsing result:
 - Date: "04-05-2024"
 - Name: "scan"
 - Extension: "jpg"
+----
+- StudyUid: "1.2.840.52394.3.152.235.2.12.187636473"
+- Type: "patient"
+- Extension: "csv"
