@@ -6,7 +6,7 @@ namespace UFP.Console.App
     {
         private static void Main()
         {
-            const string patterns = "<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid* >.<Type>.<Extension>";
+            const string patterns = "<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>";
             string[] values = [ "04-05-2024_fh5_image.png", "https://youtu.be/KoFSQeOAYz4?t=10", "04-05-2024_scan.jpg", "1.2.840.52394.3.152.235.2.12.187636473.patient.csv" ];
 
             System.Console.WriteLine(".NET:");

@@ -21,6 +21,12 @@ namespace UFP.NET.Standard
 
         #region Methods
 
+        /// <summary>
+        /// Parses the specified string.
+        /// </summary>
+        /// <param name="value">Value to parse.</param>
+        /// <param name="patterns">Patterns (can be multiple or single).</param>
+        /// <returns>A dictionary, where key is variable name and value is the value found.</returns>
         public static Dictionary<string, string> Parse(string value, string patterns)
         {
             if (value == null || patterns == null)
@@ -57,7 +63,7 @@ namespace UFP.NET.Standard
             }
         }
 
-        private static PatternPart[] SplitPattern(string pattern)
+        private static List<PatternPart> SplitPattern(string pattern)
         {
             var patternParts = new List<PatternPart>();
 
@@ -114,7 +120,7 @@ namespace UFP.NET.Standard
                 patternParts.Add(new PatternPart(temp.ToString(), true, false));
             }
 
-            return patternParts.ToArray();
+            return patternParts;
         }
 
         private static Dictionary<string, string> ParseBySinglePattern(string value, string pattern)
