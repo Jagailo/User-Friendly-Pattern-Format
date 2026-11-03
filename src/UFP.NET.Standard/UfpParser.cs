@@ -1,9 +1,16 @@
-﻿using System;
+﻿// UFP Format (User Friendly Pattern)
+// Implementation: .NET Standard 2.0 (netstandard2.0)
+// Repository:     https://github.com/Jagailo/User-Friendly-Pattern-Format
+// Author:         Alex Yagelo
+// Version:        1.1.1 (2026-11-04)
+// License:        MIT (see LICENSE)
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace UFP.NET
+namespace UFP.NET.Standard
 {
     /// <summary>
     /// User Friendly Pattern parser.
@@ -27,17 +34,17 @@ namespace UFP.NET
         /// <param name="value">Value to parse.</param>
         /// <param name="patterns">Patterns (can be multiple or single).</param>
         /// <returns>A dictionary, where key is variable name and value is the value found.</returns>
-        public static Dictionary<string, string> Parse(string? value, string? patterns)
+        public static Dictionary<string, string> Parse(string value, string patterns)
         {
             if (value == null || patterns == null)
             {
-                return [];
+                return new Dictionary<string, string>();
             }
 
-            var patternArray = patterns.Split(SeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+            var patternArray = patterns.Split(new[] { SeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
             if (patternArray.Length == 0)
             {
-                return [];
+                return new Dictionary<string, string>();
             }
 
             return patternArray.Length == 1
@@ -49,7 +56,19 @@ namespace UFP.NET
 
         #region Helpers
 
-        private record PatternPart(string Value, bool IsSeparator, bool IsGreedy);
+        private class PatternPart
+        {
+            public readonly string Value;
+            public readonly bool IsSeparator;
+            public readonly bool IsGreedy;
+
+            public PatternPart(string value, bool isSeparator, bool isGreedy)
+            {
+                Value = value;
+                IsSeparator = isSeparator;
+                IsGreedy = isGreedy;
+            }
+        }
 
         private static List<PatternPart> SplitPattern(string pattern)
         {
@@ -68,7 +87,7 @@ namespace UFP.NET
                             inBracket = true;
                             if (temp.Length != 0)
                             {
-                                patternParts.Add(new PatternPart(temp.ToString(), IsSeparator: true, IsGreedy: false));
+                                patternParts.Add(new PatternPart(temp.ToString(), true, false));
                                 temp.Clear();
                             }
                         }
@@ -82,13 +101,13 @@ namespace UFP.NET
                             inBracket = false;
                             var name = temp.ToString().Trim();
                             var isGreedy = false;
-                            if (name.EndsWith(GreedyChar))
+                            if (name.EndsWith(GreedyChar.ToString()))
                             {
-                                name = name[..^1];
+                                name = name.Substring(0, name.Length - 1);
                                 isGreedy = true;
                             }
 
-                            patternParts.Add(new PatternPart(name, IsSeparator: false, isGreedy));
+                            patternParts.Add(new PatternPart(name, false, isGreedy));
                             temp.Clear();
                         }
 
@@ -105,7 +124,7 @@ namespace UFP.NET
 
             if (temp.Length != 0)
             {
-                patternParts.Add(new PatternPart(temp.ToString(), IsSeparator: true, IsGreedy: false));
+                patternParts.Add(new PatternPart(temp.ToString(), true, false));
             }
 
             return patternParts;
@@ -117,8 +136,7 @@ namespace UFP.NET
 
             var patternParts = SplitPattern(pattern);
 
-            var separatorParts = patternParts.Select((part, index) => (part, index)).Where(x => x.part.IsSeparator)
-                .ToArray();
+            var separatorParts = patternParts.Select((part, index) => new { part, index }).Where(x => x.part.IsSeparator).ToArray();
 
             var separatorIndexes = new int[separatorParts.Length];
             var searchEnd = value.Length;
@@ -136,11 +154,11 @@ namespace UFP.NET
 
             var lastIndex = 0;
             var separatorIdx = 0;
-            for (var i = 0; i < patternParts.Length; i++)
+            for (var i = 0; i < patternParts.Count; i++)
             {
                 if (!patternParts[i].IsSeparator)
                 {
-                    if (i + 1 < patternParts.Length)
+                    if (i + 1 < patternParts.Count)
                     {
                         if (patternParts[i + 1].IsSeparator)
                         {
@@ -170,7 +188,7 @@ namespace UFP.NET
                     }
                     else
                     {
-                        results[patternParts[i].Value] = value[lastIndex..];
+                        results[patternParts[i].Value] = value.Substring(lastIndex);
                     }
                 }
             }

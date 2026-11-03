@@ -33,7 +33,12 @@ namespace UFP.Console.App
                 System.Console.WriteLine();
             }
 
-            System.Console.ReadKey();
+            System.Console.WriteLine("Done. Press any key to exit.");
+
+            if (!System.Console.IsInputRedirected)
+            {
+                System.Console.ReadKey();
+            }
         }
     }
 }

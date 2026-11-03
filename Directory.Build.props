@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <Version>1.1.1</Version>
+    <Product>UFP Format (User Friendly Pattern)</Product>
+    <Authors>Alex Yagelo</Authors>
+    <Copyright>Copyright (c) 2024 Alex Yagelo</Copyright>
+  </PropertyGroup>
+
+</Project>

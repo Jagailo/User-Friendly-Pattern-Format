@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\UFP.NET\UFP.NET.csproj" />
+    <ProjectReference Include="..\..\src\UFP.NET.Standard\UFP.NET.Standard.csproj" />
+  </ItemGroup>
+
+</Project>

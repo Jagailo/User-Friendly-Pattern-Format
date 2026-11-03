@@ -1,6 +1,48 @@
 # UFP Format (User Friendly Pattern)
 
+[![Build](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/Jagailo/User-Friendly-Pattern-Format/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-512BD4.svg)](https://learn.microsoft.com/dotnet/standard/net-standard)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/)
+
 UFP - user-friendly pattern format that is used to find data in search strings. Patterns consist of 2 parts: static and dynamic.
+
+## Requirements
+
+- [.NET SDK 10.0](https://dotnet.microsoft.com/download) or newer - required to build, test and run every project; the exact version is pinned in [`global.json`](global.json)
+- [.NET Standard 2.0](https://learn.microsoft.com/dotnet/standard/net-standard) support - required to use [`UFP.NET.Standard`](src/UFP.NET.Standard): it targets `netstandard2.0`, so the parser works on .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity and other compatible runtimes
+- An IDE that supports .NET 10 and the `.slnx` solution format: Visual Studio 2022 17.14+, JetBrains Rider 2024.3+ or VS Code with the C# Dev Kit
+
+## Repository Structure
+
+| Path | Description |
+| --- | --- |
+| [`benchmarks/UFP.Benchmarks`](benchmarks/UFP.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both implementations |
+| [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
+| [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation with nullable reference types enabled |
+| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.) |
+| [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
+
+## Usage
+
+The parser is distributed as source code: either reference the project (`ProjectReference`) or copy [`UfpParser.cs`](src/UFP.NET/UfpParser.cs) into your own project.
+
+```csharp
+using UFP.NET;
+
+const string pattern = "<Date>_<Name>.<Extension>";
+
+Dictionary<string, string> pairs = UfpParser.Parse("04-05-2024_scan.jpg", pattern);
+
+// Date: "04-05-2024"
+// Name: "scan"
+// Extension: "jpg"
+```
+
+`Parse` returns an empty dictionary when the value does not match the pattern or when `null`/empty arguments are passed.
+
+Target frameworks below .NET 10 should use `UFP.NET.Standard` (namespace `UFP.NET.Standard`) - the API is identical.
 
 ## Pattern Components
 
@@ -82,3 +124,21 @@ A mega pattern consists of several patterns separated by `|`. The parser will us
 - StudyUid: "1.2.840.52394.3.152.235.2.12.187636473"
 - Type: "patient"
 - Extension: "csv"
+
+## Benchmarks
+
+```bash
+# run all benchmarks (BenchmarkDotNet requires the Release configuration)
+dotnet run --project benchmarks/UFP.Benchmarks --configuration Release
+
+# run a single benchmark class
+dotnet run --project benchmarks/UFP.Benchmarks --configuration Release -- --filter "*ModernParserBenchmarks*"
+```
+
+## Contributing
+
+Any contributions are welcome - please read [CONTRIBUTING.md](CONTRIBUTING.md) first. The list of changes is kept in [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

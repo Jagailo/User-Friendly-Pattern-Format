@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/solution items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/UFP.NET.Standard/UFP.NET.Standard.csproj" />
+    <Project Path="src/UFP.NET/UFP.NET.csproj" />
+  </Folder>
+  <Folder Name="/playground/">
+    <Project Path="playground/UFP.Console.App/UFP.Console.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UFP.NET.Tests/UFP.NET.Tests.csproj" />
+  </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/UFP.Benchmarks/UFP.Benchmarks.csproj" />
+  </Folder>
+</Solution>
