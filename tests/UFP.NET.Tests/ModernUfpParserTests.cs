@@ -1,7 +1,7 @@
 namespace UFP.NET.Tests
 {
     /// <summary>
-    /// Runs the whole <see cref="UfpParserTests"/> set against the modern implementation (UFP.NET, net10.0).
+    /// Runs the whole <see cref="UfpParserTests"/> set against the modern implementation (UFP.NET).
     /// </summary>
     public class ModernUfpParserTests : UfpParserTests
     {

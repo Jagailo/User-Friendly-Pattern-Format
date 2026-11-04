@@ -1,11 +1,3 @@
-# UFP Format (User Friendly Pattern)
-# Format:         UFP-1.2
-# Implementation: Python 3 (3.6+; standard library only)
-# Repository:     https://github.com/Jagailo/User-Friendly-Pattern-Format
-# Author:         Alexey Yagelo
-# Version:        1.2.0 (2026-11-04)
-# License:        MIT (see LICENSE)
-
 """Tests of the Python reference port (src/UFP.Python/ufp.py).
 
 Run from the repository root:
@@ -116,6 +108,11 @@ class TokenizerTests(unittest.TestCase):
     def test_start_char_inside_a_variable_is_dropped(self):
         self.assertEqual([("AB", False, False)], ufp.tokenize("<A<B>>"))
 
+    def test_tokenize_result_is_not_shared_between_calls(self):
+        first = ufp.tokenize("<A>")
+        first.append(("X", True, False))
+        self.assertEqual([("A", False, False)], ufp.tokenize("<A>"))
+
 
 class MatchingTests(unittest.TestCase):
     """§5 of the specification."""
@@ -123,6 +120,11 @@ class MatchingTests(unittest.TestCase):
     def test_single_variable_takes_the_rest_of_the_value(self):
         self.assertEqual({"Value": "any text here"}, ufp.parse("any text here", "<Value>"))
         self.assertEqual({"Value": ""}, ufp.parse("", "<Value>"))
+
+    def test_parse_returns_an_independent_map_each_time(self):
+        first = ufp.parse("x", "<A>")
+        first["A"] = "changed"
+        self.assertEqual({"A": "x"}, ufp.parse("x", "<A>"))
 
     def test_non_greedy_variable_stops_at_the_first_occurrence(self):
         self.assertEqual({"A": "1", "B": "2", "C": "3.4"}, ufp.parse("1.2.3.4", "<A>.<B>.<C>"))

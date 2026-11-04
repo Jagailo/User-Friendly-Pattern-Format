@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Running;
 using System;
 
-namespace UFP.Benchmarks
+namespace UFP.NET.Benchmarks
 {
     internal static class Program
     {

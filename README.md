@@ -18,13 +18,14 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 
 | Path | Description |
 | --- | --- |
-| [`benchmarks/UFP.Benchmarks`](benchmarks/UFP.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both implementations |
+| [`benchmarks/UFP.NET.Benchmarks`](benchmarks/UFP.NET.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both .NET implementations |
+| [`benchmarks/UFP.Python.Benchmarks`](benchmarks/UFP.Python.Benchmarks) | `timeit` benchmarks of the Python port: the same three scenarios |
 | [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
 | [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
 | [`spec`](spec) | Machine-readable conformance suite for any implementation in any language |
-| [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation with nullable reference types enabled |
-| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.) |
-| [`src/UFP.Python`](src/UFP.Python) | Python 3 - reference port of the algorithm with a runner for the conformance suite (further ports, e.g. JavaScript or PHP, belong here too) |
+| [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation |
+| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.); C# 7.3-compatible, dependency-free and allocation-light |
+| [`src/UFP.Python`](src/UFP.Python) | Python 3 port of the parser |
 | [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
 | [`tests/UFP.Python.Tests`](tests/UFP.Python.Tests) | `unittest` tests of the Python port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 
@@ -146,25 +147,44 @@ A mega pattern consists of several patterns separated by `|`. The parser will us
 
 ## Benchmarks
 
+### .NET
+
 ```bash
-# run all benchmarks (BenchmarkDotNet requires the Release configuration)
-dotnet run --project benchmarks/UFP.Benchmarks --configuration Release
+# run all .NET benchmarks (BenchmarkDotNet requires the Release configuration)
+dotnet run --project benchmarks/UFP.NET.Benchmarks --configuration Release
 
 # run a single benchmark class
-dotnet run --project benchmarks/UFP.Benchmarks --configuration Release -- --filter "*ModernParserBenchmarks*"
+dotnet run --project benchmarks/UFP.NET.Benchmarks --configuration Release -- --filter "*ModernUfpParserBenchmarks*"
+```
+
+### Python
+
+```bash
+# run the Python benchmarks (standard library only; --iterations and --repeat are optional)
+py benchmarks/UFP.Python.Benchmarks/benchmark.py
 ```
 
 ### Results
 
-Mean time and allocated memory per single `Parse` call (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
+Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
 
 | Benchmark | `UFP.NET` (`net10.0`) | `UFP.NET.Standard` (`netstandard2.0`) |
 | --- | ---: | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 275.4 ns / 1.26 KB | 1.899 μs / 1.48 KB |
-| `MegaPattern` - three alternatives in one pattern | 918.4 ns / 4.3 KB | 8.676 μs / 5.07 KB |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 276.7 ns / 1.31 KB | 1.952 μs / 1.54 KB |
+| `Single` - `<Date>_<Name>.<Extension>` | 146.3 ns / 440 B | 164.2 ns / 864 B |
+| `MegaPattern` - three alternatives in one pattern | 342.6 ns / 664 B | 428.7 ns / 2.33 KB |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 146.3 ns / 464 B | 162.5 ns / 896 B |
 
-The modern implementation is about 7x faster on single and greedy patterns and about 9.4x faster on mega patterns, while the allocated memory is almost the same in both implementations.
+Both implementations only allocate the result map, the captured values and the variable names. The modern implementation is still the fastest and the most allocation-light: it is about 10-25% faster and allocates 2-3.5x less memory than the standard one. `UFP.NET.Standard` itself became about 11-12x faster on single and greedy patterns and about 17x faster on mega patterns compared with 1.1.0, and it allocates 1.7-2.2x less memory: it scans a pattern set in place and tokenizes into ranges of a `char` buffer without LINQ, `StringBuilder` or intermediate substrings, while staying C# 7.3-compatible and dependency-free.
+
+Mean time per single `Parse` call for the Python port (`timeit`, Python 3.15.2, same machine, 2026-11-04):
+
+| Benchmark | Mean |
+| --- | ---: |
+| `Single` - `<Date>_<Name>.<Extension>` | 712.3 ns |
+| `MegaPattern` - three alternatives in one pattern | 1617.1 ns |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 717.3 ns |
+
+The tokenization and the compiled matching plan are cached (a bounded `lru_cache`), so these are steady-state numbers for parsing many values with the same pattern. A unique pattern on every call pays a small compilation and cache-lookup cost.
 
 ## Contributing
 

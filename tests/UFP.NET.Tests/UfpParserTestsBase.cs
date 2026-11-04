@@ -4,9 +4,7 @@ namespace UFP.NET.Tests
     /// Tests of the UFP parser.
     /// </summary>
     /// <remarks>
-    /// The same set of tests is executed for both implementations:
-    /// <see cref="ModernUfpParserTests"/> (UFP.NET, net10.0) and
-    /// <see cref="StandardUfpParserTests"/> (UFP.NET.Standard, netstandard2.0).
+    /// The same set of tests is executed for both implementations: <see cref="ModernUfpParserTests"/> (UFP.NET) and <see cref="StandardUfpParserTests"/> (UFP.NET.Standard).
     /// </remarks>
     public abstract class UfpParserTests
     {
@@ -146,7 +144,6 @@ namespace UFP.NET.Tests
         [Fact]
         public void Parse_GreedyVariableAfterLeadingStaticPart_CapturesUpToLastSeparator()
         {
-            // The leading static part is verified and consumed, so it does not leak into the first value.
             AssertParseMatches("pre/<A*>_<B>", "pre/a_b_c", ("A", "a_b"), ("B", "c"));
         }
 

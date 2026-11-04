@@ -21,6 +21,7 @@ Usage:
 import json
 import os
 import sys
+from functools import lru_cache
 
 START_CHAR = "<"
 END_CHAR = ">"
@@ -43,9 +44,24 @@ def rfind_within(value, needle, max_end):
     return value.rfind(needle, 0, max_end + 1)
 
 
-def tokenize(pattern):
-    """§4 Tokenize: one alternative -> [(text, is_separator, is_greedy), ...]."""
+@lru_cache(maxsize=256)
+def _compile(pattern):
+    """§4-§5 Tokenize an alternative and compile its matching plan.
+
+    Returns an immutable ``(parts, separators, leading_part, operations)`` tuple:
+    ``parts`` is the tokenizer result, ``separators`` is the static parts in pattern
+    order, ``leading_part`` is the static part a value must start with (or None), and
+    ``operations`` lists the variables to capture as
+    ``(name, is_greedy, terminator, separator_index, terminator_length)``. A variable
+    whose terminator is None is the final one and captures the rest of the value.
+
+    Tokenization and the plan are pure functions of the pattern, and a typical
+    application parses many values with the same pattern, so the result is cached (see
+    §10.2 of the specification). The cache is bounded and the returned containers are
+    immutable, so a caller cannot corrupt it.
+    """
     parts = []
+    separators = []
     in_variable = False
     buffer = []
 
@@ -54,73 +70,119 @@ def tokenize(pattern):
             if not in_variable:
                 in_variable = True
                 if buffer:
-                    parts.append(("".join(buffer), True, False))
+                    text = "".join(buffer)
+                    parts.append((text, True, False))
+                    separators.append(text)
                     buffer = []
         elif character == END_CHAR:
             if in_variable:
                 in_variable = False
                 name = "".join(buffer).strip()
-                is_greedy = False
-                if name.endswith(GREEDY_CHAR):
+                is_greedy = len(name) > 0 and name[-1] == GREEDY_CHAR
+                if is_greedy:
                     name = name[:-1]
-                    is_greedy = True
                 parts.append((name, False, is_greedy))
                 buffer = []
         else:
             buffer.append(character)
 
     if buffer:
-        parts.append(("".join(buffer), True, False))
+        text = "".join(buffer)
+        parts.append((text, True, False))
+        separators.append(text)
 
-    return parts
+    leading_part = parts[0][0] if parts and parts[0][1] else None
+
+    operations = []
+    separators_seen = 0
+    parts_count = len(parts)
+    for index, part in enumerate(parts):
+        if part[1]:
+            separators_seen += 1
+            continue
+
+        if index + 1 == parts_count:
+            operations.append((part[0], False, None, -1, 0))
+            continue
+
+        next_part = parts[index + 1]
+        if not next_part[1]:
+            # A variable that is directly followed by another variable is ignored.
+            continue
+
+        terminator = next_part[0]
+        operations.append((part[0], part[2], terminator, separators_seen, len(terminator)))
+
+    return tuple(parts), tuple(separators), leading_part, tuple(operations)
+
+
+def tokenize(pattern):
+    """§4 Tokenize: one alternative -> [(text, is_separator, is_greedy), ...]."""
+    return list(_compile(pattern)[0])
+
+
+@lru_cache(maxsize=256)
+def _compile_alternatives(patterns):
+    """§6.1 Split a pattern set into compiled alternatives, dropping empty pieces."""
+    return tuple(
+        _compile(alternative)
+        for alternative in patterns.split(ALTERNATIVE_CHAR)
+        if alternative)
 
 
 def parse_single(value, pattern):
     """§5 ParseSingle: match one alternative."""
+    return _parse_compiled(value, _compile(pattern))
+
+
+def _parse_compiled(value, compiled):
+    """§5.2-§5.3: match a compiled alternative against a value."""
+    separators = compiled[1]
+    leading_part = compiled[2]
+    operations = compiled[3]
     results = {}
-    parts = tokenize(pattern)
-    separators = [part[0] for part in parts if part[1]]
 
-    # §5.2 Step 1: locate the separators from right to left.
-    positions = [-1] * len(separators)
-    bound = len(value) - 1
-    for index in range(len(separators) - 1, -1, -1):
-        positions[index] = rfind_within(value, separators[index], bound)
-        if positions[index] >= 0:
-            bound = positions[index] - 1
+    if not operations:
+        # Without captured variables the result is always the empty map.
+        return results
 
-    # §5.3 Step 2: cut the value from left to right.
+    # The leading static part is checked before the separators are located.
     segment_start = 0
-    if parts and parts[0][1]:
+    if leading_part is not None:
         # A pattern that starts with a static part only matches a value that starts with it,
         # and the part is consumed.
-        leading_part = parts[0][0]
         if not value.startswith(leading_part):
             return results
 
         segment_start = len(leading_part)
 
-    separators_seen = 0
-    for index, (text, is_separator, is_greedy) in enumerate(parts):
-        if is_separator:
-            separators_seen += 1
-            continue
+    # §5.2 Step 1: locate the separators from right to left.
+    separators_count = len(separators)
+    positions = [-1] * separators_count
+    bound = len(value) - 1
+    for index in range(separators_count - 1, -1, -1):
+        if bound < 0:
+            # No room is left for the separators to the left: their positions stay -1.
+            break
+        position = value.rfind(separators[index], 0, bound + 1)
+        positions[index] = position
+        if position >= 0:
+            bound = position - 1
 
-        if index + 1 == len(parts):
+    # §5.3 Step 2: cut the value from left to right.
+    find = value.find
+    for text, is_greedy, terminator, separator_index, terminator_length in operations:
+        if terminator is None:
             results[text] = value[segment_start:]
             continue
 
-        if not parts[index + 1][1]:
-            continue
-
-        terminator = parts[index + 1][0]
-        if positions[separators_seen] < 0:
+        if positions[separator_index] < 0:
             return results
 
         if is_greedy:
-            cut = positions[separators_seen]
+            cut = positions[separator_index]
         else:
-            cut = find(value, terminator, segment_start)
+            cut = find(terminator, segment_start)
             if cut < 0:
                 return results
 
@@ -128,7 +190,7 @@ def parse_single(value, pattern):
             return results
 
         results[text] = value[segment_start:cut]
-        segment_start = cut + len(terminator)
+        segment_start = cut + terminator_length
 
     return results
 
@@ -138,16 +200,15 @@ def parse(value, patterns):
     if value is None or patterns is None:
         return {}
 
-    alternatives = [chunk for chunk in patterns.split(ALTERNATIVE_CHAR) if chunk]
-    if not alternatives:
-        return {}
-
-    if len(alternatives) == 1:
-        return parse_single(value, alternatives[0])
+    if ALTERNATIVE_CHAR not in patterns:
+        # The common case: a single alternative, so there is no pattern set to split.
+        if not patterns:
+            return {}
+        return _parse_compiled(value, _compile(patterns))
 
     best = {}
-    for alternative in alternatives:
-        current = parse_single(value, alternative)
+    for compiled in _compile_alternatives(patterns):
+        current = _parse_compiled(value, compiled)
         if len(current) > len(best):
             best = current
 

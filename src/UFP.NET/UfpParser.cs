@@ -1,4 +1,4 @@
-﻿// UFP Format (User Friendly Pattern)
+// UFP Format (User Friendly Pattern)
 // Format:         UFP-1.2
 // Implementation: .NET 10 (net10.0)
 // Repository:     https://github.com/Jagailo/User-Friendly-Pattern-Format
@@ -8,8 +8,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace UFP.NET
 {
@@ -23,6 +21,9 @@ namespace UFP.NET
         private const char StartChar = '<', EndChar = '>';
         private const char SeparatorChar = '|';
         private const char GreedyChar = '*';
+
+        private const int StackSeparatorLimit = 32;
+        private const int StackBufferLimit = 256;
 
         #endregion
 
@@ -41,42 +42,80 @@ namespace UFP.NET
                 return [ ];
             }
 
-            var patternArray = patterns.Split(SeparatorChar, StringSplitOptions.RemoveEmptyEntries);
-            if (patternArray.Length == 0)
+            var patternsSpan = patterns.AsSpan();
+            Dictionary<string, string>? best = null;
+
+            foreach (var alternative in patternsSpan.Split(SeparatorChar))
             {
-                return [ ];
+                if (alternative.Start.Value == alternative.End.Value)
+                {
+                    continue;
+                }
+
+                var current = ParseBySinglePattern(value, patternsSpan[alternative]);
+
+                // Strictly greater: ties keep the first alternative (UFP-1.2 §6.2), so no sorting is needed.
+                if (best == null || current.Count > best.Count)
+                {
+                    best = current;
+                }
             }
 
-            return patternArray.Length == 1
-                ? ParseBySinglePattern(value, patternArray[0])
-                : patternArray.Select(x => ParseBySinglePattern(value, x)).OrderByDescending(x => x.Count).First();
+            return best ?? [ ];
         }
 
         #endregion
 
         #region Helpers
 
-        private record PatternPart(string Value, bool IsSeparator, bool IsGreedy);
-
-        private static List<PatternPart> SplitPattern(string pattern)
+        private readonly struct PatternPart(int start, int length, bool isSeparator, bool isGreedy)
         {
-            var patternParts = new List<PatternPart>();
+            public readonly int Start = start;
+            public readonly int Length = length;
+            public readonly bool IsSeparator = isSeparator;
+            public readonly bool IsGreedy = isGreedy;
+        }
 
+        /// <summary>
+        /// Splits one alternative into parts (UFP-1.2 §4).
+        /// </summary>
+        /// <param name="pattern">Alternative to tokenize.</param>
+        /// <param name="text">Buffer for the text of the parts, at least <c>pattern.Length</c> characters long.</param>
+        /// <param name="parts">Buffer for the parts, at least <c>pattern.Length</c> items long.</param>
+        /// <param name="separatorCount">Number of static parts.</param>
+        /// <param name="variableCount">Number of variables.</param>
+        /// <returns>Number of parts written to <paramref name="parts"/>.</returns>
+        /// <remarks>
+        /// A part keeps a range of <paramref name="text"/> instead of a copied string, so tokenization does not
+        /// allocate. Reserved characters that the tokenizer drops (<c>&lt;</c> inside a variable, <c>&gt;</c>
+        /// outside a variable) are not copied either, and the retained characters of a part are written next to
+        /// each other, so every part is a contiguous range even when characters were dropped.
+        /// </remarks>
+        private static int Tokenize(ReadOnlySpan<char> pattern, Span<char> text, Span<PatternPart> parts, out int separatorCount, out int variableCount)
+        {
+            var partCount = 0;
+            var textLength = 0;
+            var partStart = 0;
+            var partLength = 0;
             var inBracket = false;
-            var temp = new StringBuilder(25);
-            foreach (var character in pattern)
+            separatorCount = 0;
+            variableCount = 0;
+
+            for (var i = 0; i < pattern.Length; i++)
             {
-                switch (character)
+                switch (pattern[i])
                 {
                     case StartChar:
                     {
                         if (!inBracket)
                         {
                             inBracket = true;
-                            if (temp.Length != 0)
+                            if (partLength != 0)
                             {
-                                patternParts.Add(new PatternPart(temp.ToString(), IsSeparator: true, IsGreedy: false));
-                                temp.Clear();
+                                parts[partCount++] = new PatternPart(partStart, partLength, isSeparator: true, isGreedy: false);
+                                separatorCount++;
+                                partStart = textLength;
+                                partLength = 0;
                             }
                         }
 
@@ -87,131 +126,185 @@ namespace UFP.NET
                         if (inBracket)
                         {
                             inBracket = false;
-                            var name = temp.ToString().Trim();
-                            var isGreedy = false;
-                            if (name.EndsWith(GreedyChar))
+
+                            // The name is trimmed and a trailing '*' marks the variable as greedy (UFP-1.2 §4.1).
+                            // Only the range is adjusted, no substring is created.
+                            var nameStart = partStart;
+                            var nameEnd = partStart + partLength;
+                            while (nameStart < nameEnd && char.IsWhiteSpace(text[nameStart]))
                             {
-                                name = name[..^1];
-                                isGreedy = true;
+                                nameStart++;
                             }
 
-                            patternParts.Add(new PatternPart(name, IsSeparator: false, isGreedy));
-                            temp.Clear();
+                            while (nameEnd > nameStart && char.IsWhiteSpace(text[nameEnd - 1]))
+                            {
+                                nameEnd--;
+                            }
+
+                            var isGreedy = nameEnd > nameStart && text[nameEnd - 1] == GreedyChar;
+                            if (isGreedy)
+                            {
+                                nameEnd--;
+                            }
+
+                            parts[partCount++] = new PatternPart(nameStart, nameEnd - nameStart, isSeparator: false, isGreedy);
+                            variableCount++;
+                            partStart = textLength;
+                            partLength = 0;
                         }
 
                         break;
                     }
                     default:
                     {
-                        temp.Append(character);
+                        if (partLength == 0)
+                        {
+                            partStart = textLength;
+                        }
+
+                        text[textLength++] = pattern[i];
+                        partLength++;
 
                         break;
                     }
                 }
             }
 
-            if (temp.Length != 0)
+            if (partLength != 0)
             {
-                patternParts.Add(new PatternPart(temp.ToString(), IsSeparator: true, IsGreedy: false));
+                parts[partCount++] = new PatternPart(partStart, partLength, isSeparator: true, isGreedy: false);
+                separatorCount++;
             }
 
-            return patternParts;
+            return partCount;
         }
 
-        private static Dictionary<string, string> ParseBySinglePattern(string value, string pattern)
+        private static Dictionary<string, string> ParseBySinglePattern(string value, ReadOnlySpan<char> pattern)
         {
-            var results = new Dictionary<string, string>();
+            var text = pattern.Length <= StackBufferLimit ? stackalloc char[pattern.Length] : new char[pattern.Length];
+            var parts = pattern.Length <= StackBufferLimit ? stackalloc PatternPart[pattern.Length] : new PatternPart[pattern.Length];
 
-            var patternParts = SplitPattern(pattern);
+            var partCount = Tokenize(pattern, text, parts, out var separatorCount, out var variableCount);
 
-            var separatorParts = patternParts.Select((part, index) => (part, index)).Where(x => x.part.IsSeparator)
-                .ToArray();
+            Dictionary<string, string>? results = null;
+            var valueSpan = value.AsSpan();
 
-            var separatorIndexes = new int[separatorParts.Length];
+            // Step 1 (UFP-1.2 §5.2): locate the separators from right to left.
+            // Positions are indexed by the separator number, so a small array on the stack is enough.
+            var separatorIndexes = separatorCount <= StackSeparatorLimit ? stackalloc int[separatorCount] : new int[separatorCount];
+
+            var separatorIndex = separatorCount - 1;
             var searchEnd = value.Length;
 
-            // Find all separator positions from the right
-            for (var i = separatorParts.Length - 1; i >= 0; i--)
+            for (var i = partCount - 1; i >= 0; i--)
             {
-                var searchStart = searchEnd - 1;
-                if (searchStart < 0)
+                var part = parts[i];
+                if (!part.IsSeparator)
                 {
-                    // A separator occupies the beginning of the value, so there is no room for the separators to its left.
-                    separatorIndexes[i] = -1;
                     continue;
                 }
 
-                var separatorPosition = value.LastIndexOf(separatorParts[i].part.Value, searchStart, StringComparison.Ordinal);
-                separatorIndexes[i] = separatorPosition;
-                if (separatorPosition != -1)
+                // Only the prefix before the separator to the right is searched - RFIND_WITHIN of the specification.
+                // No part of the value is copied and the scanned range shrinks with every located separator.
+                separatorIndexes[separatorIndex] = LocateSeparator(valueSpan[..searchEnd], text.Slice(part.Start, part.Length));
+                if (separatorIndexes[separatorIndex] >= 0)
                 {
-                    searchEnd = separatorPosition;
+                    searchEnd = separatorIndexes[separatorIndex];
                 }
+
+                separatorIndex--;
             }
 
+            // Step 2 (UFP-1.2 §5.3): cut the value from left to right.
             var lastIndex = 0;
-            if (patternParts.Count > 0 && patternParts[0].IsSeparator)
+            if (partCount > 0 && parts[0].IsSeparator)
             {
                 // A pattern that starts with a static part only matches a value that starts with it, and the part is consumed.
-                var leadingPart = patternParts[0].Value;
-                if (!value.StartsWith(leadingPart, StringComparison.Ordinal))
+                var leadingPart = text.Slice(parts[0].Start, parts[0].Length);
+                if (!valueSpan.StartsWith(leadingPart))
                 {
-                    return results;
+                    return [ ];
                 }
 
                 lastIndex = leadingPart.Length;
             }
 
             var separatorsSeen = 0;
-            for (var i = 0; i < patternParts.Count; i++)
+            for (var i = 0; i < partCount; i++)
             {
-                if (patternParts[i].IsSeparator)
+                var part = parts[i];
+                if (part.IsSeparator)
                 {
                     separatorsSeen++;
+
                     continue;
                 }
 
-                if (i + 1 == patternParts.Count)
+                if (i + 1 == partCount)
                 {
-                    results[patternParts[i].Value] = value[lastIndex..];
+                    results ??= new Dictionary<string, string>(variableCount);
+                    results[GetVariableName(text, part)] = valueSpan[lastIndex..].ToString();
+
                     continue;
                 }
 
-                if (!patternParts[i + 1].IsSeparator)
+                var terminatorPart = parts[i + 1];
+                if (!terminatorPart.IsSeparator)
                 {
-                    // A variable that is directly followed by another variable is ignored.
-                    continue;
+                    continue; // A variable that is directly followed by another variable is ignored.
                 }
 
                 if (separatorIndexes[separatorsSeen] == -1)
                 {
-                    return results;
+                    return results ?? [ ];
                 }
 
+                var terminator = text.Slice(terminatorPart.Start, terminatorPart.Length);
+
                 int segmentEnd;
-                if (patternParts[i].IsGreedy)
+                if (part.IsGreedy)
                 {
                     segmentEnd = separatorIndexes[separatorsSeen];
                 }
                 else
                 {
-                    segmentEnd = value.IndexOf(patternParts[i + 1].Value, lastIndex, StringComparison.Ordinal);
-                    if (segmentEnd == -1)
+                    var offset = valueSpan[lastIndex..].IndexOf(terminator, StringComparison.Ordinal);
+                    if (offset == -1)
                     {
-                        return results;
+                        return results ?? [ ];
                     }
+
+                    segmentEnd = lastIndex + offset;
                 }
 
                 if (segmentEnd < lastIndex)
                 {
-                    return results;
+                    return results ?? [ ];
                 }
 
-                results[patternParts[i].Value] = value.Substring(lastIndex, segmentEnd - lastIndex);
-                lastIndex = segmentEnd + patternParts[i + 1].Value.Length;
+                results ??= new Dictionary<string, string>(variableCount);
+                results[GetVariableName(text, part)] = valueSpan.Slice(lastIndex, segmentEnd - lastIndex).ToString();
+                lastIndex = segmentEnd + terminator.Length;
             }
 
-            return results;
+            return results ?? [ ];
+        }
+
+        private static int LocateSeparator(ReadOnlySpan<char> prefix, ReadOnlySpan<char> separator)
+        {
+            if (prefix.Length == 0)
+            {
+                return -1; // A separator occupies the beginning of the value, so there is no room for the separators to its left.
+            }
+
+            return separator.Length == 1 ? prefix.LastIndexOf(separator[0]) : prefix.LastIndexOf(separator, StringComparison.Ordinal);
+        }
+
+        private static string GetVariableName(ReadOnlySpan<char> text, PatternPart part)
+        {
+            // Tokenize has already trimmed the range and removed the greedy mark,
+            // so the name is allocated exactly once - when the variable is captured.
+            return text.Slice(part.Start, part.Length).ToString();
         }
 
         #endregion

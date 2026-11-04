@@ -10,6 +10,10 @@ Every entry describes the parser itself - the UFP pattern syntax and the parsing
 
 ### Changed
 
+- Both implementations are reworked for allocation-light parsing with identical results:
+  - `UFP.NET` (`net10.0`) splits pattern sets with `MemoryExtensions.Split`, tokenizes a pattern into ranges of a stack buffer and searches separators with `ReadOnlySpan<char>` instead of LINQ, `StringBuilder` and intermediate substrings.
+  - `UFP.NET.Standard` (`netstandard2.0`) keeps C# 7.3 and has no package dependencies: it scans a pattern set in place, tokenizes an alternative into ranges of a `char` buffer and also drops LINQ, `StringBuilder` and intermediate substrings.
+  A `Parse` call allocates 1.7-6.6x less memory and runs up to 17x faster depending on the pattern and the implementation (see [Benchmarks](README.md#benchmarks)).
 - Both implementations implement the format `UFP-1.2` - the first published version of the format, specified in [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 
 ### Fixed

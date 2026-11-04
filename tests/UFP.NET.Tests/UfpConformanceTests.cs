@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace UFP.NET.Tests
 {
     /// <summary>
-    /// Runs the conformance suite of the specification (spec/ufp-1.2.test-vectors.json) against both implementations.
+    /// Runs the conformance suite of the specification against both implementations.
     /// </summary>
     public class UfpConformanceTests
     {
@@ -33,7 +33,7 @@ namespace UFP.NET.Tests
             var vector = LoadVectors().Single(x => x.Id == id);
 
             AssertSameResult(vector.Expected, UfpParser.Parse(vector.Value, vector.Pattern));
-            AssertSameResult(vector.Expected, UFP.NET.Standard.UfpParser.Parse(vector.Value, vector.Pattern));
+            AssertSameResult(vector.Expected, Standard.UfpParser.Parse(vector.Value, vector.Pattern));
         }
 
         #endregion

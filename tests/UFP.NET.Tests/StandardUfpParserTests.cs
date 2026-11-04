@@ -3,7 +3,7 @@ using StandardUfpParser = UFP.NET.Standard.UfpParser;
 namespace UFP.NET.Tests
 {
     /// <summary>
-    /// Runs the whole <see cref="UfpParserTests"/> set against the legacy-compatible implementation (UFP.NET.Standard, netstandard2.0).
+    /// Runs the whole <see cref="UfpParserTests"/> set against the legacy-compatible implementation (UFP.NET.Standard).
     /// </summary>
     public class StandardUfpParserTests : UfpParserTests
     {
