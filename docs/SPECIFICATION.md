@@ -12,12 +12,7 @@
 | Conformance suite | [`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) |
 | License | MIT — see [LICENSE](../LICENSE) |
 
-This document is a normative specification of the UFP pattern format and of the
-`Parse` operation that extracts named values from a text. It contains everything
-needed to write a conforming parser in any programming language: the grammar, the
-mathematical model of the primitive text operations, the complete algorithm in a
-language-neutral pseudocode, the failure semantics, an edge-case catalogue and a
-machine-readable conformance suite.
+This document is a normative specification of the UFP pattern format and of the `Parse` operation that extracts named values from a text. It contains everything needed to write a conforming parser in any programming language: the grammar, the mathematical model of the primitive text operations, the complete algorithm in a language-neutral pseudocode, the failure semantics, an edge-case catalogue and a machine-readable conformance suite.
 
 A Russian translation is available in [SPECIFICATION.ru.md](SPECIFICATION.ru.md).
 
@@ -39,8 +34,7 @@ A Russian translation is available in [SPECIFICATION.ru.md](SPECIFICATION.ru.md)
 12. [Versioning](#12-versioning)
 13. [Open publication, licensing and patent statement](#13-open-publication-licensing-and-patent-statement)
 - [Appendix A. Worked examples](#appendix-a-worked-examples)
-- [Appendix B. Mapping to the reference implementation](#appendix-b-mapping-to-the-reference-implementation)
-- [Appendix C. Changes in reference implementation 1.2.0](#appendix-c-changes-in-reference-implementation-120)
+- [Appendix B. Changes in version 1.2.0](#appendix-b-changes-in-version-120)
 
 ---
 
@@ -48,9 +42,7 @@ A Russian translation is available in [SPECIFICATION.ru.md](SPECIFICATION.ru.md)
 
 ### 1.1. What UFP is
 
-UFP is a *reverse template*: a pattern describes the **shape of the text that is
-being searched** — a sequence of static literals and named variable slots — and the
-parser returns every variable slot as a key/value pair.
+UFP is a *reverse template*: a pattern describes the **shape of the text that is being searched** — a sequence of static literals and named variable slots — and the parser returns every variable slot as a key/value pair.
 
 ```text
 value:   04-05-2024_scan.jpg
@@ -60,14 +52,10 @@ result:  Date = "04-05-2024", Name = "scan", Extension = "jpg"
 
 A pattern consists of two kinds of parts:
 
-* **static parts (separators)** — characters that never change and are used to find
-  the boundaries between values;
-* **dynamic parts (variables)** — named slots written in angle brackets; a variable
-  may be marked as *greedy* with a trailing `*`, which makes it capture as much text
-  as possible (`<Path*>/<Filename>.<Extension>`).
+* **static parts (separators)** — characters that never change and are used to find the boundaries between values;
+* **dynamic parts (variables)** — named slots written in angle brackets; a variable may be marked as *greedy* with a trailing `*`, which makes it capture as much text as possible (`<Path*>/<Filename>.<Extension>`).
 
-A **pattern set** ("mega pattern") lists several alternative patterns separated by
-`|`; the parser picks the alternative that captured the most variables.
+A **pattern set** ("mega pattern") lists several alternative patterns separated by `|`; the parser picks the alternative that captured the most variables.
 
 ### 1.2. Why another pattern language
 
@@ -76,7 +64,7 @@ A **pattern set** ("mega pattern") lists several alternative patterns separated 
 | Written by end users | Hard: quoting, escaping, groups | Easy, but no names | Easy, but no parsing rules | Easy, no escaping |
 | Named extraction | Named groups with syntax noise | No | Yes | Yes — the name *is* the slot |
 | Greedy / non-greedy | Explicit quantifiers, backtracking | Only `*` | Usually unspecified | One `*` on the variable |
-| Multiple shapes per pattern | Alternation + anchors | No | No | Alternatives with `|` |
+| Multiple shapes per pattern | Alternation + anchors | No | No | Alternatives with `\|` |
 | Deterministic result | Depends on engine/backtracking | — | Usually unspecified | Yes — fully specified below |
 | Failure mode | Can be catastrophic (ReDoS) | — | — | Total, linear-time scans |
 
@@ -84,35 +72,26 @@ Design principles:
 
 1. **No escaping.** Any character except `<`, `>`, `|` is a literal.
 2. **Names instead of groups.** The pattern is also the schema.
-3. **Reverse matching, not validation.** The parser extracts, it does not validate
-   the content of the variables.
-4. **Total function.** Every (value, pattern) pair yields a result map; a conforming
-   implementation never throws.
-5. **No backtracking.** The algorithm locates boundaries with ordinary substring
-   searches, so the cost is predictable.
-6. **Deterministic.** For equal inputs every conforming implementation returns the
-   same map.
+3. **Reverse matching, not validation.** The parser extracts, it does not validate the content of the variables.
+4. **Total function.** Every (value, pattern) pair yields a result map; a conforming implementation never throws.
+5. **No backtracking.** The algorithm locates boundaries with ordinary substring searches, so the cost is predictable.
+6. **Deterministic.** For equal inputs every conforming implementation returns the same map.
 
 ### 1.3. Scope and non-goals
 
-In scope: the syntax of patterns, the parsing algorithm, the result map, failure
-semantics, alternatives, greedy variables, conformance testing.
+In scope: the syntax of patterns, the parsing algorithm, the result map, failure semantics, alternatives, greedy variables, conformance testing.
 
-Out of scope: type conversion of the extracted strings, validation of their content
-(dates, numbers, e-mail addresses), Unicode normalisation, localisation, formatting
-(values *into* text), streaming/incremental parsing, and the design of any
-serialisation of the result map.
+Out of scope: type conversion of the extracted strings, validation of their content (dates, numbers, e-mail addresses), Unicode normalisation, localisation, formatting (values *into* text), streaming/incremental parsing, and the design of any serialisation of the result map.
 
 ### 1.4. Conventions and terminology
 
-The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, **MAY** are to be
-interpreted as described in RFC 2119.
+The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, **MAY** are to be interpreted as described in RFC 2119.
 
 | Term | Meaning |
 | --- | --- |
 | **value** | The text that is searched, e.g. `04-05-2024_scan.jpg` |
 | **pattern** | One alternative, e.g. `<Date>_<Name>.<Extension>` |
-| **pattern set** | A pattern list separated by `|`, e.g. `<A>_<B>\|<A>-<B>` |
+| **pattern set** | A pattern list separated by `\|`, e.g. `<A>_<B>\|<A>-<B>` |
 | **part** | One token of a pattern: a separator or a variable |
 | **separator** (static part) | A literal that must appear in the value; it is consumed |
 | **variable** (dynamic part) | A named slot `⟨name⟩`, optionally greedy |
@@ -124,21 +103,15 @@ interpreted as described in RFC 2119.
 
 ### 2.1. Strings and characters
 
-A **value** and a **pattern** are finite sequences of characters. A *character* is
-one element of the host language's string type: a Unicode code point in languages
-with code-point indexing (Python, Go, Rust `char`, Swift `Character`), a UTF-16 code
-unit in languages with UTF-16 indexing (.NET, Java, JavaScript). See §10.1 — the
-choice does not change the result.
+A **value** and a **pattern** are finite sequences of characters. A *character* is one element of the host language's string type: a Unicode code point in languages with code-point indexing (Python, Go, Rust `char`, Swift `Character`), a UTF-16 code unit in languages with UTF-16 indexing (.NET, Java, JavaScript). See §10.1 — the choice does not change the result.
 
-All comparisons are **ordinal and case-sensitive**: two characters are equal only if
-they are the same character, without case folding, without Unicode normalisation and
-without trimming. A value is never modified by `Parse`.
+All comparisons are **ordinal and case-sensitive**: two characters are equal only if they are the same character, without case folding, without Unicode normalisation and without trimming. A value is never modified by `Parse`.
+
+Text direction does not change the model: a string is a sequence of characters in **logical order**, and both left-to-right and right-to-left scripts (Arabic, Hebrew, ...) are matched by index in that order. In particular, "first" and "last" always refer to this logical order, including for greedy variables. Unicode bidi control characters (for example U+200F RIGHT-TO-LEFT MARK) are ordinary characters: they are compared literally and can be captured as part of a value. How an editor displays a pattern or a value under the Unicode bidi algorithm is outside the scope of this specification.
 
 ### 2.2. Primitive operations
 
-The algorithm in §4 and §5 is expressed with the following primitives. They are
-defined mathematically so that the specification does not depend on any standard
-library. `LENGTH(s)` is the number of characters of `s`, indices are zero-based.
+The algorithm in §4 and §5 is expressed with the following primitives. They are defined mathematically so that the specification does not depend on any standard library. `LENGTH(s)` is the number of characters of `s`, indices are zero-based.
 
 | Primitive | Result |
 | --- | --- |
@@ -153,17 +126,7 @@ library. `LENGTH(s)` is the number of characters of `s`, indices are zero-based.
 | `DROP_LAST(s)` | `s` without its last character; requires `LENGTH(s) > 0`. |
 | `SPLIT(s, ch)` | The list of maximal substrings of `s` that do not contain `ch` (empty substrings included). |
 
-> **Note on `RFIND_WITHIN`.** This is the only non-obvious primitive. The upper bound
-> is the index of the last character that may be part of the match, not the index
-> where the match may start: a match that starts at `maxEnd` is *not* allowed unless
-> it is one character long. In many languages this is
-> `RFIND_WITHIN(s, needle, maxEnd) = s.rfind(needle, 0, maxEnd + 1)` (Python),
-> `s.LastIndexOf(needle, maxEnd)` (.NET), `s.lastIndexOf(needle, maxEnd)` (Java,
-> JavaScript). Implementations that only have an unbounded reverse search MUST verify
-> the bound explicitly, for example by searching in `SUBSTRING(s, 0, maxEnd + 1)`.
-> Careful with PHP: the negative offset of `strrpos` bounds the *start* of an occurrence,
-> not its end, so the end bound has to be converted into a start bound
-> (`maxEnd - LENGTH(needle) + 1`); see [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php).
+> **Note on `RFIND_WITHIN`.** This is the only non-obvious primitive. The upper bound is the index of the last character that may be part of the match, not the index where the match may start: a match that starts at `maxEnd` is *not* allowed unless it is one character long. In many languages this is `RFIND_WITHIN(s, needle, maxEnd) = s.rfind(needle, 0, maxEnd + 1)` (Python), `s.LastIndexOf(needle, maxEnd)` (.NET), `s.lastIndexOf(needle, maxEnd)` (Java, JavaScript). Implementations that only have an unbounded reverse search MUST verify the bound explicitly, for example by searching in `SUBSTRING(s, 0, maxEnd + 1)`. Careful with PHP: the negative offset of `strrpos` bounds the *start* of an occurrence, not its end, so the end bound has to be converted into a start bound (`maxEnd - LENGTH(needle) + 1`); see [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php).
 
 ## 3. Syntax
 
@@ -175,11 +138,10 @@ Exactly four characters have a special meaning anywhere in a pattern:
 | --- | --- |
 | `<` | Starts a variable. Inside a variable it is ignored (dropped). |
 | `>` | Ends a variable. Outside a variable it is ignored (dropped). |
-| `|` | Separates the alternatives of a pattern set. Cannot occur inside a pattern. |
+| `\|` | Separates the alternatives of a pattern set. Cannot occur inside a pattern. |
 | `*` | Immediately before the closing `>` it marks the variable as greedy. Anywhere else it is an ordinary character of the name. |
 
-Every other character — letters, digits, spaces, punctuation, emoji, any Unicode
-character — is an ordinary literal and needs no escaping.
+Every other character — letters, digits, spaces, punctuation, emoji, any Unicode character — is an ordinary literal and needs no escaping.
 
 ### 3.2. Well-formed patterns
 
@@ -196,22 +158,15 @@ static-char = ? any character except "<", ">", "|" ? ;
 Additional rules:
 
 1. `name-char` excludes `>`, because `>` terminates the variable.
-2. A `*` is a greedy mark **only** if it is the last character of the variable
-   content *after* `TRIM`. `<A*>` is greedy and named `A`; `<A*B>` is not greedy and
-   is named `A*B`; `<A *>` is greedy and is named `A ` — the space is kept, because
-   trimming happens before the `*` is removed.
-3. A variable name MAY be empty (`<>`). An empty name is stored in the result map
-   under the key `""` and takes part in matching like any other name.
-4. A variable name is `TRIM`med: `<Date >` and `< Name>` are the same as `<Date>` and
-   `<Name>`.
+2. A `*` is a greedy mark **only** if it is the last character of the variable content *after* `TRIM`. `<A*>` is greedy and named `A`; `<A*B>` is not greedy and is named `A*B`; `<A *>` is greedy and is named `A ` — the space is kept, because trimming happens before the `*` is removed.
+3. A variable name MAY be empty (`<>`). An empty name is stored in the result map under the key `""` and takes part in matching like any other name.
+4. A variable name is `TRIM`med: `<Date >` and `< Name>` are the same as `<Date>` and `<Name>`.
 5. `TRIM` affects only the name; the extracted text is never trimmed.
 6. Static parts are taken literally, including spaces.
 
 ### 3.3. Ill-formed patterns
 
-Tokenization (§4) is a **total function**: it accepts every character sequence and
-never fails. Therefore the format has no "invalid pattern" error. The following
-constructs are ill-formed according to §3.2 but still have a defined meaning:
+Tokenization (§4) is a **total function**: it accepts every character sequence and never fails. Therefore the format has no "invalid pattern" error. The following constructs are ill-formed according to §3.2 but still have a defined meaning:
 
 | Construct | Meaning |
 | --- | --- |
@@ -219,16 +174,14 @@ constructs are ill-formed according to §3.2 but still have a defined meaning:
 | `<Date>_<Name` (unclosed `<`) | Everything after the unclosed `<` becomes a static part; the `<` itself is dropped. |
 | `a>b<C>` (`>` outside a variable) | The `>` is dropped; the pattern behaves like `ab<C>`. |
 | `<A<B>>` (`<` inside a variable) | The inner `<` is dropped; the variable is named `AB`. |
-| `|<A>\|\|` (empty alternatives) | Empty alternatives are ignored (§6). |
+| `\|<A>\|\|` (empty alternatives) | Empty alternatives are ignored (§6). |
 | `<A><B>` (two adjacent variables) | The first variable is ignored; the last one captures the rest of the value. |
 
-Implementations MUST handle these constructs exactly as described; they MUST NOT
-report an error. Authors SHOULD NOT write them.
+Implementations MUST handle these constructs exactly as described; they MUST NOT report an error. Authors SHOULD NOT write them.
 
 ## 4. Tokenization
 
-Tokenization turns one alternative (a pattern without `|`) into an ordered list of
-parts. A part is a record with three fields:
+Tokenization turns one alternative (a pattern without `|`) into an ordered list of parts. A part is a record with three fields:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -280,14 +233,10 @@ END FUNCTION
 
 ### 4.2. Properties
 
-* Every part is non-empty as text **except a variable with an empty name**; separators
-  are never empty, because a buffer is emitted only when it is non-empty.
-* Two separators never follow each other unless the pattern contains something the
-  tokenizer drops between them, and two variables never follow each other unless the
-  pattern contains them adjacently (see §3.3).
+* Every part is non-empty as text **except a variable with an empty name**; separators are never empty, because a buffer is emitted only when it is non-empty.
+* Two separators never follow each other unless the pattern contains something the tokenizer drops between them, and two variables never follow each other unless the pattern contains them adjacently (see §3.3).
 * The tokenizer never looks at the value; it is a pure syntax function.
-* Tokenization is **not** part of the hot loop of a typical application: a
-  pattern set can be tokenized once and reused for any number of values.
+* Tokenization is **not** part of the hot loop of a typical application: a pattern set can be tokenized once and reused for any number of values.
 
 ### 4.3. Examples
 
@@ -309,34 +258,18 @@ END FUNCTION
 
 ### 5.1. Model
 
-Let `P = p₀ … pₙ₋₁` be the parts of one alternative and `S = s₀ … sₘ₋₁` the
-separators among them, in pattern order. Let `V` be the value.
+Let `P = p₀ … pₙ₋₁` be the parts of one alternative and `S = s₀ … sₘ₋₁` the separators among them, in pattern order. Let `V` be the value.
 
-An **occurrence** of a separator `x` is an index `p` with
-`SUBSTRING(V, p, p + LENGTH(x)) = x`.
+An **occurrence** of a separator `x` is an index `p` with `SUBSTRING(V, p, p + LENGTH(x)) = x`.
 
-A variable `pᵢ` is **terminated by** the part `pᵢ₊₁` if that part is a separator, or is
-the **final** variable if no part follows it. A variable that is followed by another
-variable is **ignored** (§5.3).
+A variable `pᵢ` is **terminated by** the part `pᵢ₊₁` if that part is a separator, or is the **final** variable if no part follows it. A variable that is followed by another variable is **ignored** (§5.3).
 
-If the pattern starts with a static part, that part is a **prefix requirement**: the value
-MUST start with it, and the part is consumed before the first variable is cut (§5.3). A
-value that does not start with it does not match the alternative at all — without this
-rule the leading literal would silently leak into the first captured value
-(`IMG_<Number>.jpg` would capture `Number = "IMG_1234"` for `IMG_1234.jpg` and would even
-"match" `scan_99.jpg`). Every other static part is the terminator of the variable in front
-of it, so it is required and consumed by that variable.
+If the pattern starts with a static part, that part is a **prefix requirement**: the value MUST start with it, and the part is consumed before the first variable is cut (§5.3). A value that does not start with it does not match the alternative at all — without this rule the leading literal would silently leak into the first captured value (`IMG_<Number>.jpg` would capture `Number = "IMG_1234"` for `IMG_1234.jpg` and would even "match" `scan_99.jpg`). Every other static part is the terminator of the variable in front of it, so it is required and consumed by that variable.
 
 Matching is a two-step algorithm:
 
-1. **Locate the separators from right to left.** The separators are placed as far to
-   the right as possible, each one strictly to the left of the occurrence chosen for
-   the separator to its right. This makes greedy variables well-defined: their end
-   position is already known before the value is cut.
-2. **Cut the value from left to right.** Every variable takes the text between the
-   cursor and its terminator: the *first* occurrence of the terminator at or after the
-   cursor for a non-greedy variable, or the occurrence found in step 1 for a greedy
-   variable. The terminator itself is consumed.
+1. **Locate the separators from right to left.** The separators are placed as far to the right as possible, each one strictly to the left of the occurrence chosen for the separator to its right. This makes greedy variables well-defined: their end position is already known before the value is cut.
+2. **Cut the value from left to right.** Every variable takes the text between the cursor and its terminator: the *first* occurrence of the terminator at or after the cursor for a non-greedy variable, or the occurrence found in step 1 for a greedy variable. The terminator itself is consumed.
 
 ### 5.2. Step 1 — locate the separators (right to left)
 
@@ -358,18 +291,11 @@ END FUNCTION
 
 Consequences:
 
-* `positions[k] ≥ 0` means "the k-th separator occurs in the value, fully at or before
-  one character before the (k+1)-th separator" — the chosen occurrences never overlap.
-* If a separator does not occur within its bound, its position is `−1` and the bound
-  stays unchanged, so the separators to its left are searched in the same prefix and
-  may still be found.
-* The bound is the index of the **last character** that may be part of the match, which
-  is why `RFIND_WITHIN` is defined with `maxEnd` instead of a start index (§2.2).
-* A leading static part is not searched for with `RFIND_WITHIN`: it is verified as a
-  prefix of the value and consumed (§5.1), and its entry in `positions` is unused.
-* When `bound` becomes negative (a separator occupies the beginning of the value and
-  there are separators to its left), no occurrence can be found: the position is `−1`.
-  This case MUST NOT raise an error.
+* `positions[k] ≥ 0` means "the k-th separator occurs in the value, fully at or before one character before the (k+1)-th separator" — the chosen occurrences never overlap.
+* If a separator does not occur within its bound, its position is `−1` and the bound stays unchanged, so the separators to its left are searched in the same prefix and may still be found.
+* The bound is the index of the **last character** that may be part of the match, which is why `RFIND_WITHIN` is defined with `maxEnd` instead of a start index (§2.2).
+* A leading static part is not searched for with `RFIND_WITHIN`: it is verified as a prefix of the value and consumed (§5.1), and its entry in `positions` is unused.
+* When `bound` becomes negative (a separator occupies the beginning of the value and there are separators to its left), no occurrence can be found: the position is `−1`. This case MUST NOT raise an error.
 
 ### 5.3. Step 2 — cut the value (left to right)
 
@@ -437,26 +363,15 @@ END FUNCTION
 
 Notes:
 
-* The leading static part is verified and consumed before the loop starts. The loop still
-  counts it in `separatorsSeen` when it reaches it, so a variable that follows the leading
-  part is terminated by the *next* separator (`positions[1]`), not by the leading one. The
-  position of the leading part itself (`positions[0]`) is never used.
-* `separatorsSeen` is the number of separators that appear **before** the current
-  variable, which is exactly the index in `positions` of the separator that
-  **terminates** the current variable. It MUST be derived from the parts, not from the
-  number of already extracted variables (see Appendix C).
-* A variable that is neither final nor terminated by a separator is ignored: it
-  produces no entry and does not move the cursor.
+* The leading static part is verified and consumed before the loop starts. The loop still counts it in `separatorsSeen` when it reaches it, so a variable that follows the leading part is terminated by the *next* separator (`positions[1]`), not by the leading one. The position of the leading part itself (`positions[0]`) is never used.
+* `separatorsSeen` is the number of separators that appear **before** the current variable, which is exactly the index in `positions` of the separator that **terminates** the current variable. It MUST be derived from the parts, not from the number of already extracted variables (see Appendix B).
+* A variable that is neither final nor terminated by a separator is ignored: it produces no entry and does not move the cursor.
 * The terminator is consumed: `segmentStart` jumps behind it.
-* The final variable always captures the rest of the value, including text that looks
-  like a static part of the pattern. Only variables terminated by a separator have
-  their terminator removed.
+* The final variable always captures the rest of the value, including text that looks like a static part of the pattern. Only variables terminated by a separator have their terminator removed.
 
 ### 5.4. Failure semantics
 
-Parsing does **not** have a single success/failure result. Every variable extracted
-before the first failure is kept, so the result of a partial match is always a prefix
-of the variables of the pattern:
+Parsing does **not** have a single success/failure result. Every variable extracted before the first failure is kept, so the result of a partial match is always a prefix of the variables of the pattern:
 
 | Situation | Result |
 | --- | --- |
@@ -466,20 +381,15 @@ of the variables of the pattern:
 | The located cut position is before the cursor (defensive rule; cannot happen for a value that is consistent with step 1) | Stop. Return the variables extracted *before* `v`. |
 | No variable was extracted yet | The empty map. |
 
-Because a pattern set (§6) compares alternatives by the number of captured variables,
-partial results are meaningful: a less specific alternative wins only when the more
-specific one really captured fewer variables.
+Because a pattern set (§6) compares alternatives by the number of captured variables, partial results are meaningful: a less specific alternative wins only when the more specific one really captured fewer variables.
 
-An empty result map therefore means "the value does not have the shape described by the
-pattern". A non-empty result map does not guarantee that the whole pattern matched.
+An empty result map therefore means "the value does not have the shape described by the pattern". A non-empty result map does not guarantee that the whole pattern matched.
 
 ## 6. Pattern sets (mega patterns)
 
 ### 6.1. Splitting
 
-A pattern set is split on every `|` character. **Empty pieces are dropped**, so
-`<A>|<B>`, `|<A>|`, `||<A>||` all produce the same list of alternatives, and a set that
-consists only of `|` characters produces no alternatives at all.
+A pattern set is split on every `|` character. **Empty pieces are dropped**, so `<A>|<B>`, `|<A>|`, `||<A>||` all produce the same list of alternatives, and a set that consists only of `|` characters produces no alternatives at all.
 
 ```text
 FUNCTION SplitPatternSet(patternSet) RETURNS List<String>
@@ -496,9 +406,7 @@ END FUNCTION
 
 ### 6.2. Selection
 
-Every alternative is matched independently; the result of the alternative that
-captured the **greatest number of variables** is returned. The number of captured
-variables is the size of the result map, so a repeated variable name counts once.
+Every alternative is matched independently; the result of the alternative that captured the **greatest number of variables** is returned. The number of captured variables is the size of the result map, so a repeated variable name counts once.
 
 ```text
 FUNCTION Parse(value, patternSet) RETURNS Map<String, String>
@@ -528,30 +436,21 @@ END FUNCTION
 
 Notes:
 
-* **Ties keep the first alternative**, so the order of alternatives is significant and
-  a pattern set is deterministic even when several alternatives match equally well.
-* `SIZE` is the number of entries of the result map (the number of distinct captured
-  names), not the number of variables in the pattern.
-* An alternative that captures nothing yields the empty map, which loses against every
-  alternative that captured at least one variable.
-* The remaining checks (`NULL` arguments, empty pattern set) are part of the specified
-  behaviour, not implementation details.
+* **Ties keep the first alternative**, so the order of alternatives is significant and a pattern set is deterministic even when several alternatives match equally well.
+* `SIZE` is the number of entries of the result map (the number of distinct captured names), not the number of variables in the pattern.
+* An alternative that captures nothing yields the empty map, which loses against every alternative that captured at least one variable.
+* The remaining checks (`NULL` arguments, empty pattern set) are part of the specified behaviour, not implementation details.
 
 ## 7. Result model
 
 * The result is a **map from variable name to extracted text**. Both are strings.
-* Keys are the variable names exactly as defined in §3.2 (trimmed, without the greedy
-  mark). A name may be the empty string.
-* If the same name occurs more than once in the pattern, **the last assignment wins**
-  (`results[name] ← text` is an assignment, not an insert).
-* Only variables are returned. Static parts and the number of alternatives are never
-  reflected in the result.
-* The order of the map entries is not part of this specification; consumers MUST NOT
-  rely on it.
-* No conversion is performed: `"10"` stays `"10"`, not `10`; `""` is a captured empty
-  string, not "absent". A missing key is the only way to express "not captured".
-* The empty map is the result of "nothing captured" and is used both for a value that
-  does not match and for a pattern without variables.
+* Keys are the variable names exactly as defined in §3.2 (trimmed, without the greedy mark). A name may be the empty string.
+* There are no anonymous variables: every variable that takes part in matching appears in the result map, even when it captured an empty string. An empty name (`<>`) is a normal key (`""`), not a way to discard a value.
+* If the same name occurs more than once in the pattern, **the last assignment wins** (`results[name] ← text` is an assignment, not an insert).
+* Only variables are returned. Static parts and the number of alternatives are never reflected in the result.
+* The order of the map entries is not part of this specification; consumers MUST NOT rely on it.
+* No conversion is performed: `"10"` stays `"10"`, not `10`; `""` is a captured empty string, not "absent". A missing key is the only way to express "not captured".
+* The empty map is the result of "nothing captured" and is used both for a value that does not match and for a pattern without variables.
 
 ## 8. Conformance requirements
 
@@ -559,50 +458,34 @@ An implementation is **UFP-1.2 conformant** if it satisfies all of the following
 
 ### 8.1. MUST
 
-1. `Parse(value, patternSet)` MUST return a map for **every** pair of inputs; it MUST
-   NOT throw, abort, warn or return `null`/`nil` for any value or pattern, including
-   ill-formed patterns, empty strings and separators at the very beginning or end of
-   the value.
+1. `Parse(value, patternSet)` MUST return a map for **every** pair of inputs; it MUST NOT throw, abort, warn or return `null`/`nil` for any value or pattern, including ill-formed patterns, empty strings and separators at the very beginning or end of the value.
 2. The result MUST equal the result of the pseudocode in §4–§6 for all inputs.
-3. Comparisons MUST be ordinal and case-sensitive, with no Unicode normalisation and no
-   case folding (§2.1).
+3. Comparisons MUST be ordinal and case-sensitive, with no Unicode normalisation and no case folding (§2.1).
 4. The value MUST NOT be modified, trimmed or normalised.
 5. The result MUST be deterministic: the same inputs always yield the same map.
 6. A repeated variable name MUST overwrite the previous value (§7).
-7. Alternatives MUST be evaluated in source order and ties MUST keep the first
-   alternative (§6.2).
-8. `null`/`nil` arguments MUST produce the empty map (§6.2). Languages without null
-   values may omit this rule.
+7. Alternatives MUST be evaluated in source order and ties MUST keep the first alternative (§6.2).
+8. `null`/`nil` arguments MUST produce the empty map (§6.2). Languages without null values may omit this rule.
 9. Partial results MUST be returned as described in §5.4.
-10. A pattern that starts with a static part MUST only match a value that starts with that
-    part, and the part MUST NOT appear in any captured value (§5.1).
+10. A pattern that starts with a static part MUST only match a value that starts with that part, and the part MUST NOT appear in any captured value (§5.1).
 
 ### 8.2. SHOULD
 
 1. Tokenize the pattern once and reuse the parts for many values (§4.2).
 2. Keep the total cost at `O(|value| · |pattern|)` in the worst case (§10.2).
 3. Return an ordered map only as a convenience; do not document the order as stable.
-4. Provide a way to detect a partial match if the host language allows it (for example a
-   second method that reports the number of unmatched parts) — but `Parse` itself MUST
-   keep the specified signature/semantics.
+4. Provide a way to detect a partial match if the host language allows it (for example a second method that reports the number of unmatched parts) — but `Parse` itself MUST keep the specified signature/semantics.
 
 ### 8.3. MAY
 
 1. Add typed accessors (`ParseInt`, `ParseDate`, …) built on top of `Parse`.
 2. Cache tokenized patterns keyed by pattern string.
-3. Add an option that treats unterminated variables as errors — as long as the default
-   behaviour remains as specified.
+3. Add an option that treats unterminated variables as errors — as long as the default behaviour remains as specified.
 4. Reject non-conformant patterns only through an opt-in strict API.
 
 ### 8.4. Security considerations
 
-There is no backtracking, no recursion and no evaluation of the pattern as code, so the
-format cannot be exploited for code execution. The cost is bounded by the number of
-`FIND`/`RFIND_WITHIN` calls: `O(number of separators)` reverse scans plus one forward
-scan per non-greedy variable, each linear in the value length. A pattern set multiplies
-this by the number of alternatives, so a hostile pattern with thousands of alternatives
-still costs linearly more work — the same as any other input-proportional parsing. There
-is no analogue of catastrophic backtracking (ReDoS).
+There is no backtracking, no recursion and no evaluation of the pattern as code, so the format cannot be exploited for code execution. The cost is bounded by the number of `FIND`/`RFIND_WITHIN` calls: `O(number of separators)` reverse scans plus one forward scan per non-greedy variable, each linear in the value length. A pattern set multiplies this by the number of alternatives, so a hostile pattern with thousands of alternatives still costs linearly more work — the same as any other input-proportional parsing. There is no analogue of catastrophic backtracking (ReDoS).
 
 ## 9. Edge-case catalogue
 
@@ -693,22 +576,16 @@ Every row is also a part of the conformance suite (§11), with the same `id`.
 
 ### 10.1. Code units vs. code points
 
-`LENGTH`, `SUBSTRING`, `FIND` and `RFIND_WITHIN` may be implemented over UTF-16 code
-units (.NET, Java, JavaScript), over UTF-8 bytes (Go, Rust, PHP) or over code points
-(Python). This does **not** change the result, because every index used by the
-algorithm is a separator boundary:
+`LENGTH`, `SUBSTRING`, `FIND` and `RFIND_WITHIN` may be implemented over UTF-16 code units (.NET, Java, JavaScript), over UTF-8 bytes (Go, Rust, PHP) or over code points (Python). This does **not** change the result, because every index used by the algorithm is a separator boundary:
 
-* all indices produced by `RFIND_WITHIN` are the start of an occurrence of a
-  separator, and every separator is a whole sequence of characters;
+* all indices produced by `RFIND_WITHIN` are the start of an occurrence of a separator, and every separator is a whole sequence of characters;
 * `segmentStart` is always `cut + LENGTH(terminator)`, i.e. also a character boundary.
 
-Consequently a cut can never split a surrogate pair or a multi-byte sequence. The only
-requirement is that the *same* unit is used consistently inside one implementation.
+Consequently a cut can never split a surrogate pair or a multi-byte sequence. The only requirement is that the *same* unit is used consistently inside one implementation.
 
 ### 10.2. Complexity
 
-Let `n = LENGTH(value)`, `m` be the number of characters of the pattern, `s` the
-number of separators, and `a` the number of alternatives.
+Let `n = LENGTH(value)`, `m` be the number of characters of the pattern, `s` the number of separators, and `a` the number of alternatives.
 
 | Phase | Cost |
 | --- | --- |
@@ -717,47 +594,30 @@ number of separators, and `a` the number of alternatives.
 | Cutting the value | at most one forward scan per variable, each `O(n·L)` |
 | Pattern set | the sum over `a` alternatives |
 
-The worst case is `O(n · m)` per pattern set (with `s ≤ m` and `L ≤ m`), which is the
-same order as a naive `Split` per separator, and there is no combinatorial
-explosion. In practice the reverse scans of step 1 are what make greedy variables
-cheap: the end position of every greedy variable is known before any text is copied.
+The worst case is `O(n · m)` per pattern set (with `s ≤ m` and `L ≤ m`), which is the same order as a naive `Split` per separator, and there is no combinatorial explosion. In practice the reverse scans of step 1 are what make greedy variables cheap: the end position of every greedy variable is known before any text is copied.
 
 Typical optimisations that keep conformance:
 
 * tokenize pattern sets once and cache the parts;
-* search the *remaining prefix* only (`maxEnd`), which is what the specification
-  already requires — do not scan the whole value repeatedly when the bound shrinks;
+* search the *remaining prefix* only (`maxEnd`), which is what the specification already requires — do not scan the whole value repeatedly when the bound shrinks;
 * avoid substring copies during scanning (use indices and copy only at the end);
-* use `Ordinal`/byte-wise comparison; never use culture-aware comparison.
+* use ordinal (code-unit or byte-wise) comparison; never use culture-aware comparison.
 
 ### 10.3. Common pitfalls
 
-1. **Using a start index instead of a maximum end index** for the reverse search. A
-   terminator of length `L` found at `maxEnd` would then overlap the next separator.
-   This is the single most likely source of incompatibility.
-2. **Advancing the separator cursor per extracted variable** instead of per separator
-   part. This breaks greedy variables in patterns that start with a static part
-   (Appendix C).
+1. **Using a start index instead of a maximum end index** for the reverse search. A terminator of length `L` found at `maxEnd` would then overlap the next separator. This is the single most likely source of incompatibility.
+2. **Advancing the separator cursor per extracted variable** instead of per separator part. This breaks greedy variables in patterns that start with a static part (Appendix B).
 3. **Trimming the value** or the extracted text, or comparing case-insensitively.
-4. **Inserting into the result map** (`map.Add`) instead of assigning
-   (`map[name] = text`); a repeated name is legal and overwrites.
+4. **Inserting into the result map** (an `Add`/`insert` call) instead of assigning (`map[name] = text`); a repeated name is legal and overwrites.
 5. **Returning `null`/`nil`** or throwing for "no match"; return an empty map.
-6. **Requiring a full match.** Trailing static parts are anchors that are not consumed,
-   and a prefix of variables may be returned (§5.4).
+6. **Requiring a full match.** Trailing static parts are anchors that are not consumed, and a prefix of variables may be returned (§5.4).
 7. **Sorting the alternatives or de-duplicating them.** Order decides ties.
-8. **Splitting the value** instead of locating separators, which cannot implement
-   greedy variables correctly (the split count is unknown in advance).
-9. **Ignoring the leading static part.** It has to be verified as a prefix of the value
-   and consumed before the first variable is cut; otherwise the literal silently becomes
-   part of the first captured value and a foreign value is reported as a match (§5.1).
-   A parser that passes the conformance suite cannot make this mistake — the vectors
-   `leading-static-part-*` catch it.
+8. **Splitting the value** instead of locating separators, which cannot implement greedy variables correctly (the split count is unknown in advance).
+9. **Ignoring the leading static part.** It has to be verified as a prefix of the value and consumed before the first variable is cut; otherwise the literal silently becomes part of the first captured value and a foreign value is reported as a match (§5.1). A parser that passes the conformance suite cannot make this mistake — the vectors `leading-static-part-*` catch it.
 
 ## 11. Conformance suite
 
-[`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) contains the
-machine-readable suite: every entry is a `value`, a `pattern` (a pattern set) and the
-exact map that `Parse` must return.
+[`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) contains the machine-readable suite: every entry is a `value`, a `pattern` (a pattern set) and the exact map that `Parse` must return.
 
 ```json
 {
@@ -778,74 +638,41 @@ How to use it:
 
 1. Read the file, iterate over `vectors`.
 2. For each vector call your `Parse(value, pattern)`.
-3. Compare the returned map with `expected` **as a set of pairs** — the order of keys
-   is irrelevant, but the sizes must be equal.
+3. Compare the returned map with `expected` **as a set of pairs** — the order of keys is irrelevant, but the sizes must be equal.
 4. The implementation is conformant when every vector passes and no call throws.
 
-The .NET test suite does exactly this for both reference implementations
-([`tests/UFP.NET.Tests/UfpConformanceTests.cs`](../tests/UFP.NET.Tests/UfpConformanceTests.cs)):
+The repository ships a runner for every reference implementation:
 
 ```bash
-dotnet test UFP.slnx --configuration Release --filter "FullyQualifiedName~UfpConformanceTests"
+dotnet test UFP.slnx --configuration Release --filter "FullyQualifiedName~UfpConformanceTests"   # .NET
+py src/UFP.Python/ufp.py                                                                         # Python
+node src/UFP.JavaScript/conformance.js                                                           # JavaScript
+php src/UFP.PHP/conformance.php                                                                  # PHP
+# .NET reports 77 passed conformance tests; each port runner prints: vectors: 77, failures: 0
 ```
 
-Adding a vector is the recommended way to propose a change of the format: a vector is
-a precise, executable statement about behaviour.
-
-A second, dependency-free runner is included for Python
-([`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py)):
-
-```bash
-py src/UFP.Python/ufp.py
-# vectors: 77, failures: 0
-```
-
-Dependency-free runners are also included for JavaScript
-([`src/UFP.JavaScript/conformance.js`](../src/UFP.JavaScript/conformance.js)) and PHP
-([`src/UFP.PHP/conformance.php`](../src/UFP.PHP/conformance.php)):
-
-```bash
-node src/UFP.JavaScript/conformance.js
-php src/UFP.PHP/conformance.php
-# vectors: 77, failures: 0
-```
+Adding a vector is the recommended way to propose a change of the format: a vector is a precise, executable statement about behaviour. [`spec/README.md`](../spec/README.md) describes the schema of the file and how to run the suite against an implementation.
 
 ## 12. Versioning
 
-The format version (`UFP-1.2`) numbers the syntax and the parsing behaviour. It is
-independent of the version of any library, but the first publication was released together
-with the reference implementations: format `UFP-1.2`, libraries `1.2.0` (see Appendix C for
-the behaviour fixes included in that release).
+The format version (`UFP-1.2`) numbers the syntax and the parsing behaviour. It is independent of the version of any library, but the first publication was released together with the reference implementations: format `UFP-1.2`, reference implementations `1.2.0` (see Appendix B for the behaviour fixes included in that release).
 
 The format version follows semantic versioning:
 
 * **patch** — editorial fixes, new conformance vectors that already pass;
-* **minor** — new syntax or semantics that do not change the result of an existing
-  conformant pattern (for example a new optional marker);
+* **minor** — new syntax or semantics that do not change the result of an existing conformant pattern (for example a new optional marker);
 * **major** — any change that alters the result of an existing pattern.
 
 ## 13. Open publication, licensing and patent statement
 
-**This document is a public, dated disclosure.** It is published so that the format,
-the algorithm and every example in it become **prior art** that no party can later
-claim as an exclusive invention. The author does not seek and will not seek patents,
-utility models or any other exclusive rights covering the UFP format, the algorithm
-described here, or any obvious variant of them, and grants an irrevocable,
-royalty-free, worldwide permission to implement, use, sell and distribute the format.
+**This document is a public, dated disclosure.** It is published so that the format, the algorithm and every example in it become **prior art** that no party can later claim as an exclusive invention. The author does not seek and will not seek patents, utility models or any other exclusive rights covering the UFP format, the algorithm described here, or any obvious variant of them, and grants an irrevocable, royalty-free, worldwide permission to implement, use, sell and distribute the format.
 
-* The specification text and the reference implementations are licensed under the
-  [MIT License](../LICENSE).
-* Implementations in any language may be released under any licence, including
-  proprietary ones.
-* The name **UFP** and the version tag `UFP-1.2` may be used to describe an
-  implementation without a fee; an implementation is encouraged to state
-  "conforms to UFP-1.2" only if it passes the conformance suite of §11.
-* If you publish a port, please reference this document and the repository
-  <https://github.com/Jagailo/User-Friendly-Pattern-Format> so that the disclosure date
-  and the test vectors stay discoverable.
+* The specification text and the reference implementations are licensed under the [MIT License](../LICENSE).
+* Implementations in any language may be released under any licence, including proprietary ones.
+* The name **UFP** and the version tag `UFP-1.2` may be used to describe an implementation without a fee; an implementation is encouraged to state "conforms to UFP-1.2" only if it passes the conformance suite of §11.
+* If you publish a port, please reference this document and the repository <https://github.com/Jagailo/User-Friendly-Pattern-Format> so that the disclosure date and the test vectors stay discoverable.
 
-This statement is not legal advice; it is the author's declared intent to keep the
-format free and open.
+This statement is not legal advice; it is the author's declared intent to keep the format free and open.
 
 ---
 
@@ -858,8 +685,7 @@ value:   docs/reports/2024/annual_report.pdf     (35 characters, indices 0…34)
 pattern: <Path*>/<Filename>.<Extension>
 ```
 
-Tokenization (§4): `V: Path (greedy)`, `S: /`, `V: Filename`, `S: .`, `V: Extension`,
-therefore `separators = ["/", "."]`.
+Tokenization (§4): `V: Path (greedy)`, `S: /`, `V: Filename`, `S: .`, `V: Extension`, therefore `separators = ["/", "."]`.
 
 Step 1 (§5.2), right to left:
 
@@ -887,10 +713,7 @@ value:   x.png
 pattern: <A>.<B>.jpg
 ```
 
-`separators = [".", ".jpg"]`. Step 1: `positions[1] = −1` (no `.jpg`), so the bound
-stays `4`; `positions[0] = 1`. Step 2: `A` is terminated by `.`, `positions[0] = 1`, the
-forward scan finds `.` at `1`, so `A = "x"` and `segmentStart = 2`. `B` is terminated by
-`.jpg`, `positions[1] = −1` → stop with `A = "x"` (§5.4).
+`separators = [".", ".jpg"]`. Step 1: `positions[1] = −1` (no `.jpg`), so the bound stays `4`; `positions[0] = 1`. Step 2: `A` is terminated by `.`, `positions[0] = 1`, the forward scan finds `.` at `1`, so `A = "x"` and `segmentStart = 2`. `B` is terminated by `.jpg`, `positions[1] = −1` → stop with `A = "x"` (§5.4).
 
 ### A.3. Pattern set
 
@@ -911,66 +734,16 @@ value:   xabab
 pattern: <A*>ab<B>
 ```
 
-With `RFIND` bounded by the *start* index, a match could start at the last character
-and overlap the following separator; the terminator of `A` is `ab` and the last
-non-overlapping occurrence is at index `3`, so `A = "xab"` and `B = ""`. Any
-implementation that returns `A = "x"` for this value has used start-index semantics and
-is not conformant.
+With `RFIND` bounded by the *start* index, a match could start at the last character and overlap the following separator; the terminator of `A` is `ab` and the last non-overlapping occurrence is at index `3`, so `A = "xab"` and `B = ""`. Any implementation that returns `A = "x"` for this value has used start-index semantics and is not conformant.
 
-## Appendix B. Mapping to the reference implementation
+## Appendix B. Changes in version 1.2.0
 
-| Specification | `UfpParser.cs` (both `UFP.NET` and `UFP.NET.Standard`) |
-| --- | --- |
-| §3, §4 — tokenization | `SplitPattern`, `PatternPart` (record / class with `Value`, `IsSeparator`, `IsGreedy`) |
-| §5.2 — locate separators | the first loop of `ParseBySinglePattern` (`LastIndexOf` bounded by `searchEnd - 1`) |
-| §5.3 — cut the value | the second loop of `ParseBySinglePattern` |
-| §5.4 — failure semantics | `return results;` inside the loop |
-| §6.1 — split the pattern set | `patterns.Split(SeparatorChar, StringSplitOptions.RemoveEmptyEntries)` |
-| §6.2 — selection | `OrderByDescending(x => x.Count).First()` (LINQ is a stable sort, so ties keep the first alternative) |
-| §2.2 — `RFIND_WITHIN` | `string.LastIndexOf(string, int)` — the two-argument overload has exactly the `maxEnd` semantics |
-| §2.2 — `FIND` | `string.IndexOf(string, int, StringComparison.Ordinal)` |
-| §2.2 — `TRIM` | `string.Trim()` |
+The last published implementation version, `1.1.0`, contained three parsing defects. Version `1.2.0` is the first version that implements this specification; these are the behaviour fixes it includes:
 
-The reference implementation is a single file with no dependencies, so it can be
-copied into a project instead of being referenced as a package. The two files must be
-kept in sync (`net10.0` and `netstandard2.0`).
+1. **Error on a separator at index 0.** The reverse scan was invoked unconditionally with a bound of one character before the previously located separator. When a separator had been found at index `0` and separators to its left still had to be located, the bound became negative and the parser failed with an out-of-range error, e.g. `<A>_<B>_<C>` with `_x`. The specification requires the separator to be treated as not found (§5.2), which yields an empty or partial result.
+2. **Separator cursor advanced per variable.** The cursor that indexes the located positions was incremented after every extracted variable instead of at every separator part. For a pattern that starts with a static part the cursor therefore pointed at the wrong separator: `<A*>_<B>` with `a_b_c` was correct, but `_<A*>_<B>` with `_a_b_c` returned `A = ""`, `B = "a_b_c"` instead of `A = "a_b"`, `B = "c"`, and some patterns of this shape failed with an out-of-range error while cutting the value. §5.3 defines the cursor as the number of separators seen, which is the intended behaviour and matches the equivalent pattern without the leading static part.
+3. **Leading static part was neither verified nor consumed.** In `1.1.0` a static part in front of the first variable was ignored, so the literal leaked into the captured value and foreign values matched: `IMG_<Number>.jpg` returned `Number = "IMG_1234"` for `IMG_1234.jpg` and `Number = "scan_99"` for `scan_99.jpg`, which also made alternatives of a pattern set indistinguishable (`IMG_<Number>.jpg|scan_<Number>.jpg`). §5.1 now requires the value to start with the leading part and consumes it, so the same pattern returns `Number = "1234"` and returns nothing for `scan_99.jpg`.
 
-## Appendix C. Changes in reference implementation 1.2.0
+Everything else was verified to be identical to the published behaviour: the conformance suite (§11) passes on every reference implementation, and 14 000 randomly generated (pattern, value) pairs — including malformed patterns, empty values, overlapping separators, greedy marks and multiple alternatives — produce identical results across implementations that index strings by code point, by UTF-16 code unit and by UTF-8 byte, which also confirms §10.1.
 
-The last published version, `1.1.0`, does not compile and contained three parsing defects.
-Version `1.2.0` is the first version that implements this specification; it includes the
-compile fix that was prepared as `1.1.1` (never released) and these three behaviour fixes:
-
-1. **Exception on a separator at index 0.** The reverse scan called
-   `LastIndexOf(separator, searchEnd - 1)` unconditionally. When a separator had been
-   found at index `0` and separators to its left still had to be located, `searchStart`
-   was `-1` and `ArgumentOutOfRangeException` was thrown, e.g. `<A>_<B>_<C>` with `_x`.
-   The specification requires the separator to be treated as not found (§5.2), which
-   yields an empty or partial result.
-2. **Separator cursor advanced per variable.** The cursor that indexes the located
-   positions was incremented after every extracted variable instead of at every separator
-   part. For a pattern that starts with a static part the cursor therefore pointed at the
-   wrong separator: `<A*>_<B>` with `a_b_c` was correct, but `_<A*>_<B>` with `_a_b_c`
-   returned `A = ""`, `B = "a_b_c"` instead of `A = "_a_b"`, `B = "c"`, and some patterns
-   of this shape threw `ArgumentOutOfRangeException` from `Substring`. §5.3 defines the
-   cursor as the number of separators seen, which is the intended behaviour and matches
-   the equivalent pattern without the leading static part.
-3. **Leading static part was neither verified nor consumed.** In `1.1.0` a static part in
-   front of the first variable was ignored, so the literal leaked into the captured value
-   and foreign values matched: `IMG_<Number>.jpg` returned `Number = "IMG_1234"` for
-   `IMG_1234.jpg` and `Number = "scan_99"` for `scan_99.jpg`, which also made alternatives
-   of a pattern set indistinguishable (`IMG_<Number>.jpg|scan_<Number>.jpg`). §5.1 now
-   requires the value to start with the leading part and consumes it, so the same pattern
-   returns `Number = "1234"` and returns nothing for `scan_99.jpg`.
-
-Everything else was verified to be identical to the published behaviour: the conformance
-suite (§11) passes on both implementations, and 14 000 randomly generated
-(pattern, value) pairs — including malformed patterns, empty values, overlapping
-separators, greedy marks and multiple alternatives — produce identical results in the
-reference implementations and in the Python port
-[`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py), which was written from §4–§6 of this
-document and is used to generate the conformance suite (Python indexes strings by code
-point, .NET by UTF-16 code unit, so the two ports also confirm §10.1).
-
-No other behaviour differs, and no pattern that is well-formed and starts with a
-variable has changed.
+No other behaviour differs, and no pattern that is well-formed and starts with a variable has changed.

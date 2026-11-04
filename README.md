@@ -1,49 +1,129 @@
-# UFP Format (User Friendly Pattern)
+# UFP — User Friendly Pattern Format
 
 [![Build](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Jagailo/User-Friendly-Pattern-Format/releases)
+[![Version](https://img.shields.io/badge/format-UFP--1.2-blue.svg)](docs/SPECIFICATION.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-UFP - user-friendly pattern format that is used to find data in search strings. Patterns consist of 2 parts: static and dynamic.
+UFP (User Friendly Pattern Format) is a small open pattern language for extracting named values from text, together with its formal specification and reference implementations in several languages. A pattern is simply an example of the text with the changing parts replaced by names in angle brackets:
 
-## Repository Structure
+```text
+value:   04-05-2024_scan.jpg
+pattern: <Date>_<Name>.<Extension>
+result:  Date = "04-05-2024", Name = "scan", Extension = "jpg"
+```
 
-| Path | Description |
+There is no escaping, no character classes and no quantifiers - the language is deliberately much smaller than a regular expression. The format is defined by the open specification [UFP-1.2](docs/SPECIFICATION.md) and is implemented in C# (.NET 10 and .NET Standard 2.0), JavaScript, PHP and Python.
+
+UFP is meant for the case when the pattern is written by the *end user*: a doctor naming scans, an accountant splitting invoice numbers, a mechanic reading part codes. It is a focused alternative to regular expressions and to [URI Templates (RFC 6570)](https://www.rfc-editor.org/rfc/rfc6570) for the common task "split this text into named fields".
+
+**Writing patterns yourself?** Start with the [user guide](docs/USER-GUIDE.md) - it takes about five minutes. Integrating UFP into an application or porting it to another language? Read the [specification](docs/SPECIFICATION.md), take the parser file for your language from the table below, and verify it with the [conformance suite](spec/README.md).
+
+## Why UFP
+
+| | Regular expressions | URI Templates (RFC 6570) | UFP |
+| --- | --- | --- | --- |
+| Written by a non-programmer | Hard: escaping, groups, quantifiers | Works only for URL-shaped text | The pattern looks like an example of the text |
+| Named extraction | Extra `(?<Name>...)` syntax | Expression names | The name *is* the slot: `<Name>` |
+| Arbitrary static text around values | Needs quoting and escaping | Limited | Any character, no escaping |
+| Several shapes in one pattern | Alternation plus anchors | No | Alternatives separated by `\|` |
+| Greedy captures | `.*` vs `.*?` and backtracking | Prefixes and operators | One `*` before `>` |
+| Deterministic result | Depends on the engine | Yes | Fully specified |
+| Worst case | Can be catastrophic (ReDoS) | - | Linear, no backtracking |
+
+Key properties:
+
+- **Readable by end users.** A pattern is written as one real example with holes: `<Date>_<Name>.<Extension>`. No manual, no escaping rules to remember.
+- **The pattern is the schema.** Capturing happens by name, so the result is immediately usable structured data.
+- **No escaping.** Every character except `<`, `>`, `|` is a literal - spaces, dots, slashes, Cyrillic, Arabic, Hebrew and emoji are all fine.
+- **Several shapes in one pattern.** Alternatives are part of the syntax: `IMG_<Number>.jpg|scan_<Number>.jpg` replaces several separate checks, and the alternative that captured the most names wins.
+- **No regex under the hood.** The pattern is not translated into a regular expression; it is tokenized into a small matching plan and matched with ordinary substring searches.
+- **Linear and predictable.** Separators are located with ordinary substring searches; there is no recursion and no backtracking, so a hostile pattern cannot hang the parser.
+- **Never fails.** `Parse` always returns a map: a mismatch gives an empty map or the variables captured before it. Every conforming implementation returns the same result for the same input.
+- **Tiny and dependency-free.** Each implementation is a single source file with no third-party dependencies, and every one of them is verified against the same conformance suite.
+
+## Documentation
+
+| Document | For whom |
 | --- | --- |
+| [User guide](docs/USER-GUIDE.md) | End users - doctors, accountants, mechanics: how to write a pattern in five minutes, with simple examples |
+| [Specification](docs/SPECIFICATION.md) ([Russian translation](docs/SPECIFICATION.ru.md)) | Implementers: grammar, primitive operations, the complete algorithm in language-neutral pseudocode, failure semantics, edge cases, conformance requirements |
+| [Conformance suite](spec/README.md) | Anyone writing or checking a port: 77 machine-readable vectors in [`spec/ufp-1.2.test-vectors.json`](spec/ufp-1.2.test-vectors.json) |
+| [Changelog](CHANGELOG.md) | History of the format and of the parsing algorithm |
+| [Contributing](CONTRIBUTING.md) | How to build, test and propose changes |
 
-| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
-| [`spec`](spec) | Machine-readable conformance suite for any implementation in any language |
-| [`src/UFP.JavaScript`](src/UFP.JavaScript) | JavaScript (Node.js 20+) port of the parser |
-| [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation |
-| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - parser for legacy frameworks (.NET Framework, UWP, Unity, etc.) |
-| [`src/UFP.PHP`](src/UFP.PHP) | PHP 8.0+ port of the parser |
-| [`src/UFP.Python`](src/UFP.Python) | Python 3 port of the parser |
+## The format at a glance
+
+| Element | Meaning | Example |
+| --- | --- | --- |
+| `<Name>` | A variable: captures the text at this place and stores it under `Name` | `<Date>`, `<Patient.FirstName>` |
+| `text` | A static part (separator): literal text that must be present | `_`, `.jpg`, `IMG_` |
+| `<Name*>` | A greedier variable: captures as much as possible up to the **last** following separator | `<Path*>/<Filename>.<Extension>` |
+| `A\|B` | A pattern set ("mega pattern"): the alternative that captures the most variables wins | `IMG_<Number>.jpg\|scan_<Number>.jpg` |
+
+Rules in one screen:
+
+- A name is anything between `<` and `>`, trimmed at the edges and case-sensitive. The same name may be reused; the last captured value wins.
+- Every variable that captures text is returned: there is no anonymous or discard syntax, and `<>` is the empty name, not a way to hide a value. If a value is not interesting, give it a name and ignore it in the code.
+- A static part may be any text without `<`, `>`, `|`. It is matched exactly, including spaces.
+- A static part at the beginning of a pattern must match the beginning of the value and is not captured: `IMG_<Number>.jpg` gives `Number = "1234"` for `IMG_1234.jpg` and an empty result for `scan_99.jpg`.
+- Two variables cannot stand next to each other: in `<A><B>` the first one is ignored.
+- The last variable captures the rest of the value, including text that looks like a separator.
+- Text direction does not matter: right-to-left scripts such as Arabic and Hebrew are matched in logical order.
+- The result is always a map of strings. Values are never trimmed, converted or validated - `"10"` stays `"10"`.
+- A pattern that fits only partially returns the variables captured before the first mismatch; an empty map means that the value does not have the shape described by the pattern.
+
+The full rules, including edge cases, are in the [specification](docs/SPECIFICATION.md) and in the [user guide](docs/USER-GUIDE.md).
+
+```text
+pattern: <Path*>/<Filename>.<Extension>
+value:   docs/reports/2024/annual_report.pdf
+result:  Path = "docs/reports/2024", Filename = "annual_report", Extension = "pdf"
+```
+
+## Patterns as a schema
+
+Variable names are stable keys, not just throwaway labels for one file. An application that knows its patterns can use them as a small schema:
+
+- **Explain the fields.** Show the user which values a pattern captures and what each one means: `<Patient.FirstName>` can be displayed as "First name" or "Имя", while the pattern keeps the technical key.
+- **Build patterns in a UI.** Offer a palette of known variables and let the user assemble a pattern by drag and drop instead of typing angle brackets by hand.
+- **Share one vocabulary.** The same names are used by the parser, by the UI labels and by the code that consumes the result, so a pattern doubles as configuration and as documentation of the data.
+
+Names may also be completely free-form when the end user writes patterns for their own files - the format does not care.
+
+## Implementations
+
+Every implementation is a single dependency-free source file that passes the [conformance suite](spec/README.md). Copy the file into your project (or reference the project) - there is nothing to install.
+
+| Language | Platform | Parser file | Entry point |
+| --- | --- | --- | --- |
+| C# | .NET 10 (`net10.0`) | [`src/UFP.NET/UfpParser.cs`](src/UFP.NET/UfpParser.cs) | `UFP.NET.UfpParser.Parse` |
+| C# | .NET Standard 2.0 (`netstandard2.0`, C# 7.3) - .NET Framework 4.6.1+, UWP, Unity, Xamarin and other legacy targets | [`src/UFP.NET.Standard/UfpParser.cs`](src/UFP.NET.Standard/UfpParser.cs) | `UFP.NET.Standard.UfpParser.Parse` |
+| JavaScript | Node.js 20+, ES module | [`src/UFP.JavaScript/ufp.js`](src/UFP.JavaScript/ufp.js) | `parse` |
+| PHP | PHP 8.0+ | [`src/UFP.PHP/ufp.php`](src/UFP.PHP/ufp.php) | `UFP\parse` |
+| Python | Python 3.6+ | [`src/UFP.Python/ufp.py`](src/UFP.Python/ufp.py) | `parse` |
+
+`Parse` / `parse` always returns a map (dictionary, object, array or `dict`) of the captured variables and never throws: a value that does not fit gives an empty map (or the variables captured before the mismatch), and `null`/`None` arguments give an empty map as well. An empty map means that the value does not have the shape described by the pattern.
 
 ## Usage
 
 ### .NET
 
-The parser is distributed as source code: either reference the project (`ProjectReference`) or copy [`UfpParser.cs`](src/UFP.NET/UfpParser.cs) into your own project.
+Use `UFP.NET` on .NET 10, and `UFP.NET.Standard` (identical API) on any older target:
 
 ```csharp
-using UFP.NET;
+using UFP.NET; // or UFP.NET.Standard
+using System.Collections.Generic;
 
 const string pattern = "<Date>_<Name>.<Extension>";
 
 Dictionary<string, string> pairs = UfpParser.Parse("04-05-2024_scan.jpg", pattern);
 
-// Date: "04-05-2024"
-// Name: "scan"
-// Extension: "jpg"
+// pairs["Date"]      = "04-05-2024"
+// pairs["Name"]      = "scan"
+// pairs["Extension"] = "jpg"
 ```
 
-`Parse` returns an empty dictionary when the value does not match the pattern or when `null`/empty arguments are passed.
-
-Target frameworks below .NET 10 should use `UFP.NET.Standard` (namespace `UFP.NET.Standard`) - the API is identical.
-
 ### JavaScript
-
-[`src/UFP.JavaScript/ufp.js`](src/UFP.JavaScript/ufp.js) is a single ES module with no dependencies (Node.js 20+): copy it into your project or import it directly.
 
 ```js
 import { parse } from "./src/UFP.JavaScript/ufp.js";
@@ -54,13 +134,7 @@ parse("04-05-2024_scan.jpg", pattern);
 // { Date: "04-05-2024", Name: "scan", Extension: "jpg" }
 ```
 
-`parse` returns a plain object with one own property per captured variable, and `{}` when the value does not match the pattern or when `null`/`undefined`/empty arguments are passed. The port also exports `parseSingle`, `tokenize`, `find` and `rfindWithin` - the tokenizer and the primitives defined by the specification - for tests and for other ports.
-
-Run its tests with `npm test` and the conformance suite with `npm run conformance` (both need only Node.js).
-
 ### PHP
-
-[`src/UFP.PHP/ufp.php`](src/UFP.PHP/ufp.php) is a single file with no dependencies (PHP 8.0+): copy it into your project or require it directly.
 
 ```php
 require_once "src/UFP.PHP/ufp.php";
@@ -71,147 +145,63 @@ UFP\parse("04-05-2024_scan.jpg", $pattern);
 // ["Date" => "04-05-2024", "Name" => "scan", "Extension" => "jpg"]
 ```
 
-`UFP\parse` returns an array with one entry per captured variable, and `[]` when the value does not match the pattern or when `null`/empty arguments are passed. A variable name that is a canonical integer (for example `<0>`) becomes an integer array key, because PHP casts such keys; the captured pairs are the specified ones. The file also exports `UFP\parseSingle`, `UFP\tokenize`, `UFP\find` and `UFP\rfindWithin` - the tokenizer and the primitives defined by the specification - for tests and for other ports.
+A variable name that is a canonical integer (for example `<0>`) becomes an integer array key, because PHP casts such keys; the captured pairs are the specified ones.
 
-Run its tests with `php tests/UFP.PHP.Tests/ufp.test.php` and the conformance suite with `php src/UFP.PHP/conformance.php` (both need only PHP, no PHPUnit or composer).
+### Python
 
-## Specification
+```python
+from ufp import parse  # ufp.py copied into your project or on sys.path
 
-The format is defined by an open specification: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) ([Russian translation](docs/SPECIFICATION.ru.md)). It contains the grammar, the complete parsing algorithm in language-neutral pseudocode, the failure semantics, an edge-case catalogue and the conformance requirements - everything needed to implement UFP in any language. The current format version is `UFP-1.2`.
+pattern = "<Date>_<Name>.<Extension>"
 
-```text
-value:   04-05-2024_scan.jpg
-pattern: <Date>_<Name>.<Extension>
-result:  Date = "04-05-2024", Name = "scan", Extension = "jpg"
+parse("04-05-2024_scan.jpg", pattern)
+# {'Date': '04-05-2024', 'Name': 'scan', 'Extension': 'jpg'}
 ```
 
-The specification is published as a dated public disclosure, so the format stays free for everyone: no patent is claimed and any implementation may use it royalty-free.
+The ports also export their tokenizer and the primitive string operations (`tokenize`, `find`, `rfindWithin` / `rfind_within`) for tests and for other ports.
 
-Any implementation can be verified against the machine-readable conformance suite [`spec/ufp-1.2.test-vectors.json`](spec/ufp-1.2.test-vectors.json) - see [`spec/README.md`](spec/README.md).
+## Specification and conformance
 
-## Pattern Components
+The format is defined by [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) ([Russian translation](docs/SPECIFICATION.ru.md)): the grammar, the primitive string operations, the complete algorithm in language-neutral pseudocode, failure semantics, an edge-case catalogue and the requirements for a conforming implementation. The current version is **UFP-1.2** (published 2026-11-04). The specification is a dated public disclosure under the MIT license, so the format stays free for every implementation, including proprietary ones.
 
-### Dynamic Parts (Variables)
-- Data that may differ in searched strings
-- Must have a unique name wrapped in angle brackets (`<`, `>`)
-  - Examples: `<Date>`, `<Patient.FirstName>`, `<UselessData1>`
-- Cannot be placed next to each other without a separator
-- Can be marked as greedy by adding `*` before the closing bracket (e.g., `<StudyUid*>`)
+Every implementation is verified against [`spec/ufp-1.2.test-vectors.json`](spec/ufp-1.2.test-vectors.json) - 77 vectors, each with the exact map that `Parse` must return. The format of the file and the way to run it against your own implementation are described in [`spec/README.md`](spec/README.md):
 
-### Static Parts (Separators)
-- Data that never changes in searched strings
-- Can be any character except `<`, `>`, and `|`
-- Can be of any length
-- A static part at the beginning of a pattern must match the beginning of the string and is not part of the captured value: `IMG_<Number>.jpg` gives `Number = "1234"` for `IMG_1234.jpg` and matches nothing for `scan_99.jpg`
+```bash
+dotnet test UFP.slnx --configuration Release --filter "FullyQualifiedName~UfpConformanceTests"   # .NET
+py src/UFP.Python/ufp.py                                                                         # Python
+node src/UFP.JavaScript/conformance.js                                                           # JavaScript
+php src/UFP.PHP/conformance.php                                                                  # PHP
+# .NET reports 77 passed conformance tests; each port runner prints: vectors: 77, failures: 0
+```
 
-## Greedy Variables
-A greedy variable (marked with `*`) will match as much text as possible until reaching the next separator. This is useful when:
-- The variable content may contain characters that would normally match subsequent separators
-- You want to capture all remaining text until a specific pattern
-
-Example:
-`<Path*>/<Filename>.<Extension>`
-
-For input `docs/reports/2024/annual_report.pdf`:
-- Path: "docs/reports/2024"
-- Filename: "annual_report"
-- Extension: "pdf"
-
-Without greedy marking, the pattern might incorrectly split on intermediate `/` characters.
-
-## Example of Pattern and String
-
-**String with data for parsing:**
-
-![image](https://github.com/Jagailo/User-Friendly-Pattern-Format/assets/10468120/8719317d-fafe-4ab0-87ef-c1f226b37dab)
-
-**User friendly pattern:**
-
-![image](https://github.com/Jagailo/User-Friendly-Pattern-Format/assets/10468120/af59bcd8-c065-4a5a-973f-88eae2396edf)
-
-**Parsing result:**
-- Date: "22-04-2024"
-- Phone: "1288724"
-- Patient.FirstName: "Alexey"
-- Patient.LastName: "Yagelo"
-- Patient.Gender: "male"
-- Reference: "KH2708530"
-- UID: "3111196K001PB8"
-- Extension: "doc"
-
-## Mega Pattern
-A mega pattern consists of several patterns separated by `|`. The parser will use the pattern that most closely matches the input string.
-
-**Mega pattern example:**
-
-`<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>`
-
-**Values for parsing:**
-- `04-05-2024_fh5_image.png`
-- `https://youtu.be/KoFSQeOAYz4?t=10`
-- `04-05-2024_scan.jpg`
-- `1.2.840.52394.3.152.235.2.12.187636473.patient.csv`
-
-**Parsing result:**
-- Date: "04-05-2024"
-- Name: "fh5_image"
-- Extension: "png"
-----
-- Protocol: "https"
-- Domain: "youtu.be"
-- Page: "KoFSQeOAYz4"
-- FirstParameter.Key: "t"
-- FirstParameter.Value: "10"
-----
-- Date: "04-05-2024"
-- Name: "scan"
-- Extension: "jpg"
-----
-- StudyUid: "1.2.840.52394.3.152.235.2.12.187636473"
-- Type: "patient"
-- Extension: "csv"
+The format version is independent of the version of any implementation: ports can be added, rewritten or updated without changing `UFP-1.2`, as long as they keep passing the suite. The format itself is intentionally closed and small: it is not going to grow into a regular-expression engine, and its syntax is not expected to change.
 
 ## Benchmarks
 
-Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
+Mean time and memory per single `Parse` call. Scenarios: `Single` = `<Date>_<Name>.<Extension>`, `MegaPattern` = three alternatives in one pattern, `GreedyVariables` = `<Path*>/<Filename>.<Extension>`. Same machine (AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04); BenchmarkDotNet 0.15.8 for .NET, the standard-library timers of each language for the ports (see [`benchmarks/`](benchmarks)).
 
-| Benchmark | `UFP.NET` (`net10.0`) | `UFP.NET.Standard` (`netstandard2.0`) |
-| --- | ---: | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 146.3 ns / 440 B | 164.2 ns / 864 B |
-| `MegaPattern` - three alternatives in one pattern | 342.6 ns / 664 B | 428.7 ns / 2.33 KB |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 146.3 ns / 464 B | 162.5 ns / 896 B |
+| Implementation | `Single` | `MegaPattern` | `GreedyVariables` |
+| --- | ---: | ---: | ---: |
+| .NET 10 (`net10.0`) | 146.3 ns / 440 B | 342.6 ns / 664 B | 146.3 ns / 464 B |
+| .NET Standard 2.0 | 164.2 ns / 864 B | 428.7 ns / 2.33 KB | 162.5 ns / 896 B |
+| JavaScript (Node.js 24) | 191.2 ns / 416 B | 512.8 ns / 1.16 KB | 182.4 ns / 416 B |
+| Python 3.15 | 709.9 ns / 361 B | 1664.2 ns / 387 B | 697.0 ns / 372 B |
+| PHP 8.3 | 1167.4 ns / 488 B | 2613.5 ns / 504 B | 1037.5 ns / 496 B |
 
-Both implementations only allocate the result map, the captured values and the variable names. The modern implementation is still the fastest and the most allocation-light: it is about 10-25% faster and allocates 2-3.5x less memory than the standard one. `UFP.NET.Standard` itself became about 11-12x faster on single and greedy patterns and about 17x faster on mega patterns compared with 1.1.0, and it allocates 1.7-2.2x less memory: it scans a pattern set in place and tokenizes into ranges of a `char` buffer without LINQ, `StringBuilder` or intermediate substrings, while staying C# 7.3-compatible and dependency-free.
+The numbers are steady state: the tokenized pattern and the compiled matching plan are cached, so parsing many values with the same pattern does not pay for compilation again. Memory is the memory allocated by one call (retained memory for PHP).
 
-Mean time and allocated memory per single `Parse` call for the Python port (`timeit` and `tracemalloc`, Python 3.15.2, same machine, 2026-11-04):
+The modern .NET build is the fastest and the most allocation-light; .NET Standard 2.0 is 11-25% slower and allocates 1.9-3.6x more memory, the price of staying C# 7.3-compatible on `netstandard2.0` without the newer span APIs. JavaScript is within 1.5x of .NET 10, Python is about 5x and PHP 7-8x slower. A typical single-pattern parse stays between 0.15 and 1.2 microseconds in every implementation, and all of them allocate only the result map, the captured values and a small positions array.
 
-| Benchmark | Mean | Allocated |
-| --- | ---: | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 709.9 ns | 361 B |
-| `MegaPattern` - three alternatives in one pattern | 1664.2 ns | 387 B |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 697.0 ns | 372 B |
+## Repository layout
 
-The tokenization and the compiled matching plan are cached (a bounded `lru_cache`), so these are steady-state numbers for parsing many values with the same pattern. A unique pattern on every call pays a small compilation and cache-lookup cost. A `Parse` call allocates the result dict, the captured substrings and a small positions list; the variable names and the compiled plans are shared with the cache. `Allocated` is measured from `tracemalloc` deltas around one and two `Parse` calls whose results are kept alive - the difference removes the cost of the measurement itself - and shows the memory that a caller keeps alive after the call. `tracemalloc` slows the interpreter down, so the benchmark starts it only for the memory phase (use `--no-memory` to skip this part).
-
-Mean time and allocated memory per single `Parse` call for the JavaScript port (`process.hrtime` and `process.memoryUsage`, Node.js 24.16.0 / V8, same machine, 2026-11-04):
-
-| Benchmark | Mean | Allocated |
-| --- | ---: | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 191.2 ns | 416 B |
-| `MegaPattern` - three alternatives in one pattern | 512.8 ns | 1.16 KB |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 182.4 ns | 416 B |
-
-The tokenization and the compiled matching plan are cached (bounded `Map` caches), so these are steady-state numbers as well. A `Parse` call allocates the result object, the captured values and a small positions array; the variable names and the compiled plans are shared with the cache. `Allocated` is measured from `heapUsed` deltas around one and two `Parse` calls after a forced garbage collection - the difference removes the cost of the measurement itself - so the benchmark re-runs itself with `--expose-gc` (use `--no-memory` to skip this part).
-
-Mean time and retained memory per single `Parse` call for the PHP port (`hrtime` and `memory_get_usage`, PHP 8.3.27 CLI, same machine, 2026-11-04):
-
-| Benchmark | Mean | Retained |
-| --- | ---: | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 1167.4 ns | 488 B |
-| `MegaPattern` - three alternatives in one pattern | 2613.5 ns | 504 B |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 1037.5 ns | 496 B |
-
-The tokenization and the compiled matching plan are cached in bounded static arrays, so these are steady-state numbers as well. A `Parse` call allocates the result array, the captured substrings and a small positions array; the variable names and the compiled plans are shared with the cache. `Retained` is measured from `memory_get_usage()` deltas around one and two `Parse` calls - the difference removes the cost of the measurement itself - and shows the memory that a caller keeps alive after the call (use `--no-memory` to skip this part).
+| Path | Contents |
+| --- | --- |
+| [`src/`](src) | One dependency-free parser per language |
+| [`spec/`](spec) | Conformance vectors and instructions for running them |
+| [`docs/`](docs) | Specification (English and Russian) and the end-user guide |
+| [`tests/`](tests) | Unit tests and conformance runners for every parser |
+| [`benchmarks/`](benchmarks) | Benchmark projects for every parser |
+| [`playground/`](playground) | A small .NET console app that prints the parsing result for a few patterns and values |
 
 ## Contributing
 
