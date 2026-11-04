@@ -23,6 +23,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Restore
         run: dotnet restore UFP.slnx
 
@@ -34,3 +39,6 @@ jobs:
 
       - name: Test (Python port)
         run: python3 -m unittest discover -s tests/UFP.Python.Tests -v
+
+      - name: Test (JavaScript port)
+        run: npm test

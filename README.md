@@ -12,24 +12,30 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) or newer - required to build, test and run every project; the exact version is pinned in [`global.json`](global.json)
 - [.NET Standard 2.0](https://learn.microsoft.com/dotnet/standard/net-standard) support - required to use [`UFP.NET.Standard`](src/UFP.NET.Standard): it targets `netstandard2.0`, so the parser works on .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity and other compatible runtimes
+- [Node.js](https://nodejs.org/) 20 or newer - required to run the JavaScript port, its tests and its benchmarks; they use only the standard library, so no `npm install` is needed
 - An IDE that supports .NET 10 and the `.slnx` solution format: Visual Studio 2022 17.14+, JetBrains Rider 2024.3+ or VS Code with the C# Dev Kit
 
 ## Repository Structure
 
 | Path | Description |
 | --- | --- |
+| [`benchmarks/UFP.JavaScript.Benchmarks`](benchmarks/UFP.JavaScript.Benchmarks) | `process.hrtime` and `process.memoryUsage` benchmarks of the JavaScript port: time and allocated bytes for the same three scenarios |
 | [`benchmarks/UFP.NET.Benchmarks`](benchmarks/UFP.NET.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both .NET implementations |
 | [`benchmarks/UFP.Python.Benchmarks`](benchmarks/UFP.Python.Benchmarks) | `timeit` benchmarks of the Python port: the same three scenarios |
 | [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
 | [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
 | [`spec`](spec) | Machine-readable conformance suite for any implementation in any language |
+| [`src/UFP.JavaScript`](src/UFP.JavaScript) | JavaScript (Node.js 20+) port of the parser: a single ES module with no dependencies |
 | [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation |
 | [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.); C# 7.3-compatible, dependency-free and allocation-light |
 | [`src/UFP.Python`](src/UFP.Python) | Python 3 port of the parser |
+| [`tests/UFP.JavaScript.Tests`](tests/UFP.JavaScript.Tests) | `node:test` tests of the JavaScript port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 | [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
 | [`tests/UFP.Python.Tests`](tests/UFP.Python.Tests) | `unittest` tests of the Python port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 
 ## Usage
+
+### .NET
 
 The parser is distributed as source code: either reference the project (`ProjectReference`) or copy [`UfpParser.cs`](src/UFP.NET/UfpParser.cs) into your own project.
 
@@ -48,6 +54,23 @@ Dictionary<string, string> pairs = UfpParser.Parse("04-05-2024_scan.jpg", patter
 `Parse` returns an empty dictionary when the value does not match the pattern or when `null`/empty arguments are passed.
 
 Target frameworks below .NET 10 should use `UFP.NET.Standard` (namespace `UFP.NET.Standard`) - the API is identical.
+
+### JavaScript
+
+[`src/UFP.JavaScript/ufp.js`](src/UFP.JavaScript/ufp.js) is a single ES module with no dependencies (Node.js 20+): copy it into your project or import it directly.
+
+```js
+import { parse } from "./src/UFP.JavaScript/ufp.js";
+
+const pattern = "<Date>_<Name>.<Extension>";
+
+parse("04-05-2024_scan.jpg", pattern);
+// { Date: "04-05-2024", Name: "scan", Extension: "jpg" }
+```
+
+`parse` returns a plain object with one own property per captured variable, and `{}` when the value does not match the pattern or when `null`/`undefined`/empty arguments are passed. The port also exports `parseSingle`, `tokenize`, `find` and `rfindWithin` - the tokenizer and the primitives defined by the specification - for tests and for other ports.
+
+Run its tests with `npm test` and the conformance suite with `npm run conformance` (both need only Node.js).
 
 ## Specification
 
@@ -164,6 +187,19 @@ dotnet run --project benchmarks/UFP.NET.Benchmarks --configuration Release -- --
 py benchmarks/UFP.Python.Benchmarks/benchmark.py
 ```
 
+### JavaScript
+
+```bash
+# run the JavaScript benchmarks (standard library only; --iterations, --repeat and --samples are optional)
+node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js
+
+# or through npm
+npm run benchmark -- --iterations 100000 --repeat 7
+
+# time only, without the allocated-memory measurement
+node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js --no-memory
+```
+
 ### Results
 
 Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
@@ -185,6 +221,16 @@ Mean time per single `Parse` call for the Python port (`timeit`, Python 3.15.2, 
 | `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 717.3 ns |
 
 The tokenization and the compiled matching plan are cached (a bounded `lru_cache`), so these are steady-state numbers for parsing many values with the same pattern. A unique pattern on every call pays a small compilation and cache-lookup cost.
+
+Mean time and allocated memory per single `Parse` call for the JavaScript port (`process.hrtime` and `process.memoryUsage`, Node.js 24.16.0 / V8, same machine, 2026-11-04):
+
+| Benchmark | Mean | Allocated |
+| --- | ---: | ---: |
+| `Single` - `<Date>_<Name>.<Extension>` | 191.2 ns | 416 B |
+| `MegaPattern` - three alternatives in one pattern | 512.8 ns | 1.16 KB |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 182.4 ns | 416 B |
+
+The tokenization and the compiled matching plan are cached (bounded `Map` caches), so these are steady-state numbers as well. A `Parse` call allocates the result object, the captured values and a small positions array; the variable names and the compiled plans are shared with the cache. `Allocated` is measured from `heapUsed` deltas around one and two `Parse` calls after a forced garbage collection - the difference removes the cost of the measurement itself - so the benchmark re-runs itself with `--expose-gc` (use `--no-memory` to skip this part).
 
 ## Contributing
 

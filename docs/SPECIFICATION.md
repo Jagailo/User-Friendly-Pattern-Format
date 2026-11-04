@@ -8,7 +8,7 @@
 | Status | Stable, published, open for implementation |
 | Published | 2026-11-04 |
 | Author | Alexey Yagelo |
-| Reference implementations | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3) |
+| Reference implementations | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+) |
 | Conformance suite | [`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) |
 | License | MIT — see [LICENSE](../LICENSE) |
 

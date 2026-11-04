@@ -1,0 +1,16 @@
+{
+  "name": "ufp-javascript",
+  "version": "1.2.0",
+  "private": true,
+  "description": "UFP-1.2 reference port in JavaScript (User Friendly Pattern Format).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/UFP.JavaScript.Tests/ufp.test.js",
+    "benchmark": "node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js",
+    "conformance": "node src/UFP.JavaScript/conformance.js"
+  }
+}

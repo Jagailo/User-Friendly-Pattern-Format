@@ -8,7 +8,7 @@
 | Статус | Стабильная, опубликована, открыта для реализации |
 | Дата публикации | 2026-11-04 |
 | Автор | Алексей Ягело |
-| Референсные реализации | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3) |
+| Референсные реализации | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+) |
 | Набор тестов на соответствие | [`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) |
 | Лицензия | MIT — см. [LICENSE](../LICENSE) |
 
