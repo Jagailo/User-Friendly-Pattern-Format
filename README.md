@@ -3,39 +3,21 @@
 [![Build](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml)
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Jagailo/User-Friendly-Pattern-Format/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-512BD4.svg)](https://learn.microsoft.com/dotnet/standard/net-standard)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/)
 
 UFP - user-friendly pattern format that is used to find data in search strings. Patterns consist of 2 parts: static and dynamic.
-
-## Requirements
-
-- [.NET SDK 10.0](https://dotnet.microsoft.com/download) or newer - required to build, test and run every project; the exact version is pinned in [`global.json`](global.json)
-- [.NET Standard 2.0](https://learn.microsoft.com/dotnet/standard/net-standard) support - required to use [`UFP.NET.Standard`](src/UFP.NET.Standard): it targets `netstandard2.0`, so the parser works on .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity and other compatible runtimes
-- [Node.js](https://nodejs.org/) 20 or newer - required to run the JavaScript port, its tests and its benchmarks; they use only the standard library, so no `npm install` is needed
-- [PHP](https://www.php.net/) 8.0 or newer - required to run the PHP port, its tests and its benchmarks; it uses only the standard library, so no `composer install` is needed
-- An IDE that supports .NET 10 and the `.slnx` solution format: Visual Studio 2022 17.14+, JetBrains Rider 2024.3+ or VS Code with the C# Dev Kit
 
 ## Repository Structure
 
 | Path | Description |
 | --- | --- |
-| [`benchmarks/UFP.JavaScript.Benchmarks`](benchmarks/UFP.JavaScript.Benchmarks) | `process.hrtime` and `process.memoryUsage` benchmarks of the JavaScript port: time and allocated bytes for the same three scenarios |
-| [`benchmarks/UFP.NET.Benchmarks`](benchmarks/UFP.NET.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both .NET implementations |
-| [`benchmarks/UFP.PHP.Benchmarks`](benchmarks/UFP.PHP.Benchmarks) | `hrtime` and `memory_get_usage` benchmarks of the PHP port: time and retained bytes for the same three scenarios |
-| [`benchmarks/UFP.Python.Benchmarks`](benchmarks/UFP.Python.Benchmarks) | `timeit` benchmarks of the Python port: the same three scenarios |
+
 | [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
-| [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
 | [`spec`](spec) | Machine-readable conformance suite for any implementation in any language |
-| [`src/UFP.JavaScript`](src/UFP.JavaScript) | JavaScript (Node.js 20+) port of the parser: a single ES module with no dependencies |
+| [`src/UFP.JavaScript`](src/UFP.JavaScript) | JavaScript (Node.js 20+) port of the parser |
 | [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation |
-| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.); C# 7.3-compatible, dependency-free and allocation-light |
-| [`src/UFP.PHP`](src/UFP.PHP) | PHP 8.0+ port of the parser: a single file with no dependencies |
+| [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - parser for legacy frameworks (.NET Framework, UWP, Unity, etc.) |
+| [`src/UFP.PHP`](src/UFP.PHP) | PHP 8.0+ port of the parser |
 | [`src/UFP.Python`](src/UFP.Python) | Python 3 port of the parser |
-| [`tests/UFP.JavaScript.Tests`](tests/UFP.JavaScript.Tests) | `node:test` tests of the JavaScript port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
-| [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
-| [`tests/UFP.PHP.Tests`](tests/UFP.PHP.Tests) | Dependency-free test runner of the PHP port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
-| [`tests/UFP.Python.Tests`](tests/UFP.Python.Tests) | `unittest` tests of the Python port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 
 ## Usage
 
@@ -191,48 +173,6 @@ A mega pattern consists of several patterns separated by `|`. The parser will us
 
 ## Benchmarks
 
-### .NET
-
-```bash
-# run all .NET benchmarks (BenchmarkDotNet requires the Release configuration)
-dotnet run --project benchmarks/UFP.NET.Benchmarks --configuration Release
-
-# run a single benchmark class
-dotnet run --project benchmarks/UFP.NET.Benchmarks --configuration Release -- --filter "*ModernUfpParserBenchmarks*"
-```
-
-### Python
-
-```bash
-# run the Python benchmarks (standard library only; --iterations and --repeat are optional)
-py benchmarks/UFP.Python.Benchmarks/benchmark.py
-```
-
-### JavaScript
-
-```bash
-# run the JavaScript benchmarks (standard library only; --iterations, --repeat and --samples are optional)
-node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js
-
-# or through npm
-npm run benchmark -- --iterations 100000 --repeat 7
-
-# time only, without the allocated-memory measurement
-node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js --no-memory
-```
-
-### PHP
-
-```bash
-# run the PHP benchmarks (standard library only; --iterations, --repeat and --samples are optional)
-php benchmarks/UFP.PHP.Benchmarks/benchmark.php
-
-# time only, without the retained-memory measurement
-php benchmarks/UFP.PHP.Benchmarks/benchmark.php --no-memory
-```
-
-### Results
-
 Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
 
 | Benchmark | `UFP.NET` (`net10.0`) | `UFP.NET.Standard` (`netstandard2.0`) |
@@ -243,15 +183,15 @@ Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet
 
 Both implementations only allocate the result map, the captured values and the variable names. The modern implementation is still the fastest and the most allocation-light: it is about 10-25% faster and allocates 2-3.5x less memory than the standard one. `UFP.NET.Standard` itself became about 11-12x faster on single and greedy patterns and about 17x faster on mega patterns compared with 1.1.0, and it allocates 1.7-2.2x less memory: it scans a pattern set in place and tokenizes into ranges of a `char` buffer without LINQ, `StringBuilder` or intermediate substrings, while staying C# 7.3-compatible and dependency-free.
 
-Mean time per single `Parse` call for the Python port (`timeit`, Python 3.15.2, same machine, 2026-11-04):
+Mean time and allocated memory per single `Parse` call for the Python port (`timeit` and `tracemalloc`, Python 3.15.2, same machine, 2026-11-04):
 
-| Benchmark | Mean |
-| --- | ---: |
-| `Single` - `<Date>_<Name>.<Extension>` | 712.3 ns |
-| `MegaPattern` - three alternatives in one pattern | 1617.1 ns |
-| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 717.3 ns |
+| Benchmark | Mean | Allocated |
+| --- | ---: | ---: |
+| `Single` - `<Date>_<Name>.<Extension>` | 709.9 ns | 361 B |
+| `MegaPattern` - three alternatives in one pattern | 1664.2 ns | 387 B |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 697.0 ns | 372 B |
 
-The tokenization and the compiled matching plan are cached (a bounded `lru_cache`), so these are steady-state numbers for parsing many values with the same pattern. A unique pattern on every call pays a small compilation and cache-lookup cost.
+The tokenization and the compiled matching plan are cached (a bounded `lru_cache`), so these are steady-state numbers for parsing many values with the same pattern. A unique pattern on every call pays a small compilation and cache-lookup cost. A `Parse` call allocates the result dict, the captured substrings and a small positions list; the variable names and the compiled plans are shared with the cache. `Allocated` is measured from `tracemalloc` deltas around one and two `Parse` calls whose results are kept alive - the difference removes the cost of the measurement itself - and shows the memory that a caller keeps alive after the call. `tracemalloc` slows the interpreter down, so the benchmark starts it only for the memory phase (use `--no-memory` to skip this part).
 
 Mean time and allocated memory per single `Parse` call for the JavaScript port (`process.hrtime` and `process.memoryUsage`, Node.js 24.16.0 / V8, same machine, 2026-11-04):
 
