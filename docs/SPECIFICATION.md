@@ -8,7 +8,7 @@
 | Status | Stable, published, open for implementation |
 | Published | 2026-11-04 |
 | Author | Alexey Yagelo |
-| Reference implementations | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+) |
+| Reference implementations | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+), [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php) (PHP 8.0+) |
 | Conformance suite | [`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) |
 | License | MIT — see [LICENSE](../LICENSE) |
 
@@ -161,6 +161,9 @@ library. `LENGTH(s)` is the number of characters of `s`, indices are zero-based.
 > `s.LastIndexOf(needle, maxEnd)` (.NET), `s.lastIndexOf(needle, maxEnd)` (Java,
 > JavaScript). Implementations that only have an unbounded reverse search MUST verify
 > the bound explicitly, for example by searching in `SUBSTRING(s, 0, maxEnd + 1)`.
+> Careful with PHP: the negative offset of `strrpos` bounds the *start* of an occurrence,
+> not its end, so the end bound has to be converted into a start bound
+> (`maxEnd - LENGTH(needle) + 1`); see [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php).
 
 ## 3. Syntax
 
@@ -691,7 +694,7 @@ Every row is also a part of the conformance suite (§11), with the same `id`.
 ### 10.1. Code units vs. code points
 
 `LENGTH`, `SUBSTRING`, `FIND` and `RFIND_WITHIN` may be implemented over UTF-16 code
-units (.NET, Java, JavaScript), over UTF-8 bytes (Go, Rust) or over code points
+units (.NET, Java, JavaScript), over UTF-8 bytes (Go, Rust, PHP) or over code points
 (Python). This does **not** change the result, because every index used by the
 algorithm is a separator boundary:
 
@@ -794,6 +797,16 @@ A second, dependency-free runner is included for Python
 
 ```bash
 py src/UFP.Python/ufp.py
+# vectors: 77, failures: 0
+```
+
+Dependency-free runners are also included for JavaScript
+([`src/UFP.JavaScript/conformance.js`](../src/UFP.JavaScript/conformance.js)) and PHP
+([`src/UFP.PHP/conformance.php`](../src/UFP.PHP/conformance.php)):
+
+```bash
+node src/UFP.JavaScript/conformance.js
+php src/UFP.PHP/conformance.php
 # vectors: 77, failures: 0
 ```
 

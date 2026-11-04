@@ -7,6 +7,7 @@ Thanks for taking the time to contribute to UFP!
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) or newer (the version is pinned in [`global.json`](global.json))
 - [Node.js](https://nodejs.org/) 20 or newer - only needed for the JavaScript port; it uses the standard library only
 - [Python 3.6](https://www.python.org/downloads/) or newer - only needed for the Python port; it uses the standard library only
+- [PHP 8.0](https://www.php.net/downloads) or newer - only needed for the PHP port; it uses the standard library only
 
 ## Workflow
 
@@ -24,6 +25,9 @@ Thanks for taking the time to contribute to UFP!
 
    # JavaScript port (Node.js 20+, standard library only)
    node --test tests/UFP.JavaScript.Tests/ufp.test.js
+
+   # PHP port (PHP 8.0+, standard library only)
+   php tests/UFP.PHP.Tests/ufp.test.php
    ```
 
 5. Commit the change and open a pull request against `main`.
@@ -32,7 +36,7 @@ Thanks for taking the time to contribute to UFP!
 
 - Follow the rules from [`.editorconfig`](.editorconfig).
 - Keep the two parser implementations - `src/UFP.NET/UfpParser.cs` (`net10.0`) and `src/UFP.NET.Standard/UfpParser.cs` (`netstandard2.0`) - in sync.
-- Ports in other languages live in `src/` (for example `src/UFP.Python/ufp.py` and `src/UFP.JavaScript/ufp.js`), have their tests in `tests/` (for example `tests/UFP.Python.Tests` and `tests/UFP.JavaScript.Tests`) and must pass the conformance suite: `py -m unittest discover -s tests/UFP.Python.Tests -v` and `node --test tests/UFP.JavaScript.Tests/ufp.test.js`.
+- Ports in other languages live in `src/` (for example `src/UFP.Python/ufp.py`, `src/UFP.JavaScript/ufp.js` and `src/UFP.PHP/ufp.php`), have their tests in `tests/` (for example `tests/UFP.Python.Tests`, `tests/UFP.JavaScript.Tests` and `tests/UFP.PHP.Tests`) and must pass the conformance suite: `py -m unittest discover -s tests/UFP.Python.Tests -v`, `node --test tests/UFP.JavaScript.Tests/ufp.test.js` and `php tests/UFP.PHP.Tests/ufp.test.php`.
 - Every behavior change (new syntax, greedy variables, mega patterns, edge cases) must be covered by a test in `tests/UFP.NET.Tests`.
 - Keep [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) and its [Russian translation](docs/SPECIFICATION.ru.md) in sync with the parser, and add a vector to [`spec/ufp-1.2.test-vectors.json`](spec/ufp-1.2.test-vectors.json) for every new behavior - the conformance suite is what other implementations verify themselves against.
 - Update [`CHANGELOG.md`](CHANGELOG.md) for every parser behavior change ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format). Only the parser itself is listed there - tests, CI and repository restructuring are not.

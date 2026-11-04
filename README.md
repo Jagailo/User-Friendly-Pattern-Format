@@ -13,6 +13,7 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) or newer - required to build, test and run every project; the exact version is pinned in [`global.json`](global.json)
 - [.NET Standard 2.0](https://learn.microsoft.com/dotnet/standard/net-standard) support - required to use [`UFP.NET.Standard`](src/UFP.NET.Standard): it targets `netstandard2.0`, so the parser works on .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity and other compatible runtimes
 - [Node.js](https://nodejs.org/) 20 or newer - required to run the JavaScript port, its tests and its benchmarks; they use only the standard library, so no `npm install` is needed
+- [PHP](https://www.php.net/) 8.0 or newer - required to run the PHP port, its tests and its benchmarks; it uses only the standard library, so no `composer install` is needed
 - An IDE that supports .NET 10 and the `.slnx` solution format: Visual Studio 2022 17.14+, JetBrains Rider 2024.3+ or VS Code with the C# Dev Kit
 
 ## Repository Structure
@@ -21,6 +22,7 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 | --- | --- |
 | [`benchmarks/UFP.JavaScript.Benchmarks`](benchmarks/UFP.JavaScript.Benchmarks) | `process.hrtime` and `process.memoryUsage` benchmarks of the JavaScript port: time and allocated bytes for the same three scenarios |
 | [`benchmarks/UFP.NET.Benchmarks`](benchmarks/UFP.NET.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both .NET implementations |
+| [`benchmarks/UFP.PHP.Benchmarks`](benchmarks/UFP.PHP.Benchmarks) | `hrtime` and `memory_get_usage` benchmarks of the PHP port: time and retained bytes for the same three scenarios |
 | [`benchmarks/UFP.Python.Benchmarks`](benchmarks/UFP.Python.Benchmarks) | `timeit` benchmarks of the Python port: the same three scenarios |
 | [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
 | [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
@@ -28,9 +30,11 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 | [`src/UFP.JavaScript`](src/UFP.JavaScript) | JavaScript (Node.js 20+) port of the parser: a single ES module with no dependencies |
 | [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation |
 | [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.); C# 7.3-compatible, dependency-free and allocation-light |
+| [`src/UFP.PHP`](src/UFP.PHP) | PHP 8.0+ port of the parser: a single file with no dependencies |
 | [`src/UFP.Python`](src/UFP.Python) | Python 3 port of the parser |
 | [`tests/UFP.JavaScript.Tests`](tests/UFP.JavaScript.Tests) | `node:test` tests of the JavaScript port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 | [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
+| [`tests/UFP.PHP.Tests`](tests/UFP.PHP.Tests) | Dependency-free test runner of the PHP port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 | [`tests/UFP.Python.Tests`](tests/UFP.Python.Tests) | `unittest` tests of the Python port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 
 ## Usage
@@ -71,6 +75,23 @@ parse("04-05-2024_scan.jpg", pattern);
 `parse` returns a plain object with one own property per captured variable, and `{}` when the value does not match the pattern or when `null`/`undefined`/empty arguments are passed. The port also exports `parseSingle`, `tokenize`, `find` and `rfindWithin` - the tokenizer and the primitives defined by the specification - for tests and for other ports.
 
 Run its tests with `npm test` and the conformance suite with `npm run conformance` (both need only Node.js).
+
+### PHP
+
+[`src/UFP.PHP/ufp.php`](src/UFP.PHP/ufp.php) is a single file with no dependencies (PHP 8.0+): copy it into your project or require it directly.
+
+```php
+require_once "src/UFP.PHP/ufp.php";
+
+$pattern = "<Date>_<Name>.<Extension>";
+
+UFP\parse("04-05-2024_scan.jpg", $pattern);
+// ["Date" => "04-05-2024", "Name" => "scan", "Extension" => "jpg"]
+```
+
+`UFP\parse` returns an array with one entry per captured variable, and `[]` when the value does not match the pattern or when `null`/empty arguments are passed. A variable name that is a canonical integer (for example `<0>`) becomes an integer array key, because PHP casts such keys; the captured pairs are the specified ones. The file also exports `UFP\parseSingle`, `UFP\tokenize`, `UFP\find` and `UFP\rfindWithin` - the tokenizer and the primitives defined by the specification - for tests and for other ports.
+
+Run its tests with `php tests/UFP.PHP.Tests/ufp.test.php` and the conformance suite with `php src/UFP.PHP/conformance.php` (both need only PHP, no PHPUnit or composer).
 
 ## Specification
 
@@ -200,6 +221,16 @@ npm run benchmark -- --iterations 100000 --repeat 7
 node benchmarks/UFP.JavaScript.Benchmarks/benchmark.js --no-memory
 ```
 
+### PHP
+
+```bash
+# run the PHP benchmarks (standard library only; --iterations, --repeat and --samples are optional)
+php benchmarks/UFP.PHP.Benchmarks/benchmark.php
+
+# time only, without the retained-memory measurement
+php benchmarks/UFP.PHP.Benchmarks/benchmark.php --no-memory
+```
+
 ### Results
 
 Mean time and allocated memory per single `Parse` call for .NET (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
@@ -231,6 +262,16 @@ Mean time and allocated memory per single `Parse` call for the JavaScript port (
 | `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 182.4 ns | 416 B |
 
 The tokenization and the compiled matching plan are cached (bounded `Map` caches), so these are steady-state numbers as well. A `Parse` call allocates the result object, the captured values and a small positions array; the variable names and the compiled plans are shared with the cache. `Allocated` is measured from `heapUsed` deltas around one and two `Parse` calls after a forced garbage collection - the difference removes the cost of the measurement itself - so the benchmark re-runs itself with `--expose-gc` (use `--no-memory` to skip this part).
+
+Mean time and retained memory per single `Parse` call for the PHP port (`hrtime` and `memory_get_usage`, PHP 8.3.27 CLI, same machine, 2026-11-04):
+
+| Benchmark | Mean | Retained |
+| --- | ---: | ---: |
+| `Single` - `<Date>_<Name>.<Extension>` | 1167.4 ns | 488 B |
+| `MegaPattern` - three alternatives in one pattern | 2613.5 ns | 504 B |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 1037.5 ns | 496 B |
+
+The tokenization and the compiled matching plan are cached in bounded static arrays, so these are steady-state numbers as well. A `Parse` call allocates the result array, the captured substrings and a small positions array; the variable names and the compiled plans are shared with the cache. `Retained` is measured from `memory_get_usage()` deltas around one and two `Parse` calls - the difference removes the cost of the measurement itself - and shows the memory that a caller keeps alive after the call (use `--no-memory` to skip this part).
 
 ## Contributing
 

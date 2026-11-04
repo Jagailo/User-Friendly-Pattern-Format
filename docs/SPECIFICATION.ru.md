@@ -8,7 +8,7 @@
 | Статус | Стабильная, опубликована, открыта для реализации |
 | Дата публикации | 2026-11-04 |
 | Автор | Алексей Ягело |
-| Референсные реализации | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+) |
+| Референсные реализации | [`src/UFP.NET/UfpParser.cs`](../src/UFP.NET/UfpParser.cs) (UFP.NET 1.2.0, `net10.0`), [`src/UFP.NET.Standard/UfpParser.cs`](../src/UFP.NET.Standard/UfpParser.cs) (`netstandard2.0`), [`src/UFP.Python/ufp.py`](../src/UFP.Python/ufp.py) (Python 3), [`src/UFP.JavaScript/ufp.js`](../src/UFP.JavaScript/ufp.js) (JavaScript, Node.js 20+), [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php) (PHP 8.0+) |
 | Набор тестов на соответствие | [`spec/ufp-1.2.test-vectors.json`](../spec/ufp-1.2.test-vectors.json) |
 | Лицензия | MIT — см. [LICENSE](../LICENSE) |
 
@@ -160,6 +160,9 @@ UFP — это *обратный шаблон*: шаблон описывает 
 > `s.LastIndexOf(needle, maxEnd)` (.NET), `s.lastIndexOf(needle, maxEnd)` (Java,
 > JavaScript). Если в языке есть только неограниченный обратный поиск, границу
 > **НУЖНО** проверить явно — например, искать в `SUBSTRING(s, 0, maxEnd + 1)`.
+> В PHP осторожно: отрицательное смещение `strrpos` ограничивает **начало** вхождения, а
+> не его конец, поэтому верхнюю границу нужно перевести в границу начала
+> (`maxEnd - LENGTH(needle) + 1`); см. [`src/UFP.PHP/ufp.php`](../src/UFP.PHP/ufp.php).
 
 ## 3. Синтаксис
 
@@ -695,7 +698,7 @@ FUNCTION Parse(value, patternSet) RETURNS Map<String, String>
 ### 10.1. Единицы кода и кодовые точки
 
 `LENGTH`, `SUBSTRING`, `FIND` и `RFIND_WITHIN` можно реализовать над единицами UTF‑16
-(.NET, Java, JavaScript), над байтами UTF‑8 (Go, Rust) или над кодовыми точками (Python).
+(.NET, Java, JavaScript), над байтами UTF‑8 (Go, Rust, PHP) или над кодовыми точками (Python).
 Это **не** меняет результат, потому что каждый индекс в алгоритме — граница сепаратора:
 
 * все индексы, которые возвращает `RFIND_WITHIN`, — начала вхождений сепараторов, а
@@ -802,6 +805,16 @@ dotnet test UFP.slnx --configuration Release --filter "FullyQualifiedName~UfpCon
 
 ```bash
 py src/UFP.Python/ufp.py
+# vectors: 77, failures: 0
+```
+
+Прогонщики без зависимостей есть также для JavaScript
+([`src/UFP.JavaScript/conformance.js`](../src/UFP.JavaScript/conformance.js)) и PHP
+([`src/UFP.PHP/conformance.php`](../src/UFP.PHP/conformance.php)):
+
+```bash
+node src/UFP.JavaScript/conformance.js
+php src/UFP.PHP/conformance.php
 # vectors: 77, failures: 0
 ```
 
