@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -31,3 +31,6 @@ jobs:
 
       - name: Test
         run: dotnet test UFP.slnx --configuration Release --no-build
+
+      - name: Test (Python port)
+        run: python3 -m unittest discover -s tests/UFP.Python.Tests -v

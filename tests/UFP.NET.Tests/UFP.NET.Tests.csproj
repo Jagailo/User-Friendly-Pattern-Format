@@ -21,4 +21,8 @@
     <ProjectReference Include="..\..\src\UFP.NET.Standard\UFP.NET.Standard.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../../spec/ufp-1.2.test-vectors.json" Link="spec/ufp-1.2.test-vectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

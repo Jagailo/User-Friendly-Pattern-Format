@@ -1,8 +1,9 @@
 ﻿// UFP Format (User Friendly Pattern)
+// Format:         UFP-1.2
 // Implementation: .NET 10 (net10.0)
 // Repository:     https://github.com/Jagailo/User-Friendly-Pattern-Format
-// Author:         Alex Yagelo
-// Version:        1.1.1 (2026-11-04)
+// Author:         Alexey Yagelo
+// Version:        1.2.0 (2026-11-04)
 // License:        MIT (see LICENSE)
 
 using System;
@@ -15,7 +16,6 @@ namespace UFP.NET
     /// <summary>
     /// User Friendly Pattern parser.
     /// </summary>
-    /// <remarks>https://github.com/Jagailo/User-Friendly-Pattern-Format</remarks>
     public static class UfpParser
     {
         #region Constants
@@ -133,7 +133,15 @@ namespace UFP.NET
             // Find all separator positions from the right
             for (var i = separatorParts.Length - 1; i >= 0; i--)
             {
-                var separatorPosition = value.LastIndexOf(separatorParts[i].part.Value, searchEnd - 1, StringComparison.Ordinal);
+                var searchStart = searchEnd - 1;
+                if (searchStart < 0)
+                {
+                    // A separator occupies the beginning of the value, so there is no room for the separators to its left.
+                    separatorIndexes[i] = -1;
+                    continue;
+                }
+
+                var separatorPosition = value.LastIndexOf(separatorParts[i].part.Value, searchStart, StringComparison.Ordinal);
                 separatorIndexes[i] = separatorPosition;
                 if (separatorPosition != -1)
                 {
@@ -142,44 +150,65 @@ namespace UFP.NET
             }
 
             var lastIndex = 0;
-            var separatorIdx = 0;
+            if (patternParts.Count > 0 && patternParts[0].IsSeparator)
+            {
+                // A pattern that starts with a static part only matches a value that starts with it, and the part is consumed.
+                var leadingPart = patternParts[0].Value;
+                if (!value.StartsWith(leadingPart, StringComparison.Ordinal))
+                {
+                    return results;
+                }
+
+                lastIndex = leadingPart.Length;
+            }
+
+            var separatorsSeen = 0;
             for (var i = 0; i < patternParts.Count; i++)
             {
-                if (!patternParts[i].IsSeparator)
+                if (patternParts[i].IsSeparator)
                 {
-                    if (i + 1 < patternParts.Count)
-                    {
-                        if (patternParts[i + 1].IsSeparator)
-                        {
-                            if (separatorIndexes[separatorIdx] == -1)
-                            {
-                                return results;
-                            }
+                    separatorsSeen++;
+                    continue;
+                }
 
-                            int segmentEnd;
-                            if (patternParts[i].IsGreedy)
-                            {
-                                segmentEnd = separatorIndexes[separatorIdx];
-                            }
-                            else
-                            {
-                                segmentEnd = value.IndexOf(patternParts[i + 1].Value, lastIndex, StringComparison.Ordinal);
-                                if (segmentEnd == -1)
-                                {
-                                    return results;
-                                }
-                            }
+                if (i + 1 == patternParts.Count)
+                {
+                    results[patternParts[i].Value] = value[lastIndex..];
+                    continue;
+                }
 
-                            results[patternParts[i].Value] = value.Substring(lastIndex, segmentEnd - lastIndex);
-                            lastIndex = segmentEnd + patternParts[i + 1].Value.Length;
-                            separatorIdx++;
-                        }
-                    }
-                    else
+                if (!patternParts[i + 1].IsSeparator)
+                {
+                    // A variable that is directly followed by another variable is ignored.
+                    continue;
+                }
+
+                if (separatorIndexes[separatorsSeen] == -1)
+                {
+                    return results;
+                }
+
+                int segmentEnd;
+                if (patternParts[i].IsGreedy)
+                {
+                    segmentEnd = separatorIndexes[separatorsSeen];
+                }
+                else
+                {
+                    segmentEnd = value.IndexOf(patternParts[i + 1].Value, lastIndex, StringComparison.Ordinal);
+                    if (segmentEnd == -1)
                     {
-                        results[patternParts[i].Value] = value[lastIndex..];
+                        return results;
                     }
                 }
+
+                if (segmentEnd < lastIndex)
+                {
+                    return results;
+                }
+
+                results[patternParts[i].Value] = value.Substring(lastIndex, segmentEnd - lastIndex);
+                lastIndex = segmentEnd + patternParts[i + 1].Value.Length;
             }
 
             return results;

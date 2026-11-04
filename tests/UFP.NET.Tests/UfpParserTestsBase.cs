@@ -131,6 +131,43 @@ namespace UFP.NET.Tests
             Assert.Empty(Parse("04-05-2024_scan", string.Empty));
         }
 
+        [Fact]
+        public void Parse_SeparatorAtStartOfValue_ReturnsEmptyResult()
+        {
+            AssertParseMatches("<A>_<B>_<C>", "_x");
+        }
+
+        [Fact]
+        public void Parse_MoreSeparatorsThanValueCanHold_ReturnsEmptyResult()
+        {
+            AssertParseMatches("<A>_<B>_<C>_<D>", "_x_y");
+        }
+
+        [Fact]
+        public void Parse_GreedyVariableAfterLeadingStaticPart_CapturesUpToLastSeparator()
+        {
+            // The leading static part is verified and consumed, so it does not leak into the first value.
+            AssertParseMatches("pre/<A*>_<B>", "pre/a_b_c", ("A", "a_b"), ("B", "c"));
+        }
+
+        [Fact]
+        public void Parse_LeadingStaticPart_IsConsumed()
+        {
+            AssertParseMatches("IMG_<Number>.jpg", "IMG_1234.jpg", ("Number", "1234"));
+        }
+
+        [Fact]
+        public void Parse_ValueDoesNotStartWithLeadingStaticPart_ReturnsEmptyResult()
+        {
+            AssertParseMatches("IMG_<Number>.jpg", "scan_99.jpg");
+        }
+
+        [Fact]
+        public void Parse_LeadingStaticPartOfMegaPattern_SelectsTheMatchingAlternative()
+        {
+            AssertParseMatches("IMG_<Number>.jpg|scan_<Number>.jpg", "scan_99.jpg", ("Number", "99"));
+        }
+
         #endregion
 
         #region Helpers

@@ -1,7 +1,7 @@
 # UFP Format (User Friendly Pattern)
 
 [![Build](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Jagailo/User-Friendly-Pattern-Format/actions/workflows/build.yml)
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/Jagailo/User-Friendly-Pattern-Format/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Jagailo/User-Friendly-Pattern-Format/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.0-512BD4.svg)](https://learn.microsoft.com/dotnet/standard/net-standard)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -19,10 +19,14 @@ UFP - user-friendly pattern format that is used to find data in search strings. 
 | Path | Description |
 | --- | --- |
 | [`benchmarks/UFP.Benchmarks`](benchmarks/UFP.Benchmarks) | BenchmarkDotNet benchmarks: single pattern, mega pattern and greedy variables for both implementations |
+| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Normative specification of the format (grammar, algorithm in language-neutral pseudocode, conformance requirements, edge cases) and [its Russian translation](docs/SPECIFICATION.ru.md) |
 | [`playground/UFP.Console.App`](playground/UFP.Console.App) | `net10.0` - console application that demonstrates both implementations |
+| [`spec`](spec) | Machine-readable conformance suite for any implementation in any language |
 | [`src/UFP.NET`](src/UFP.NET) | `net10.0` - the primary implementation with nullable reference types enabled |
 | [`src/UFP.NET.Standard`](src/UFP.NET.Standard) | `netstandard2.0` - the same parser for legacy frameworks (.NET Framework, UWP, Unity, etc.) |
+| [`src/UFP.Python`](src/UFP.Python) | Python 3 - reference port of the algorithm with a runner for the conformance suite (further ports, e.g. JavaScript or PHP, belong here too) |
 | [`tests/UFP.NET.Tests`](tests/UFP.NET.Tests) | xUnit v3 tests (Microsoft Testing Platform) that verify both implementations return the same result |
+| [`tests/UFP.Python.Tests`](tests/UFP.Python.Tests) | `unittest` tests of the Python port: the conformance suite plus unit tests of the primitives, the tokenizer, matching and pattern sets |
 
 ## Usage
 
@@ -44,6 +48,20 @@ Dictionary<string, string> pairs = UfpParser.Parse("04-05-2024_scan.jpg", patter
 
 Target frameworks below .NET 10 should use `UFP.NET.Standard` (namespace `UFP.NET.Standard`) - the API is identical.
 
+## Specification
+
+The format is defined by an open specification: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) ([Russian translation](docs/SPECIFICATION.ru.md)). It contains the grammar, the complete parsing algorithm in language-neutral pseudocode, the failure semantics, an edge-case catalogue and the conformance requirements - everything needed to implement UFP in any language. The current format version is `UFP-1.2`.
+
+```text
+value:   04-05-2024_scan.jpg
+pattern: <Date>_<Name>.<Extension>
+result:  Date = "04-05-2024", Name = "scan", Extension = "jpg"
+```
+
+The specification is published as a dated public disclosure, so the format stays free for everyone: no patent is claimed and any implementation may use it royalty-free.
+
+Any implementation can be verified against the machine-readable conformance suite [`spec/ufp-1.2.test-vectors.json`](spec/ufp-1.2.test-vectors.json) - see [`spec/README.md`](spec/README.md).
+
 ## Pattern Components
 
 ### Dynamic Parts (Variables)
@@ -57,6 +75,7 @@ Target frameworks below .NET 10 should use `UFP.NET.Standard` (namespace `UFP.NE
 - Data that never changes in searched strings
 - Can be any character except `<`, `>`, and `|`
 - Can be of any length
+- A static part at the beginning of a pattern must match the beginning of the string and is not part of the captured value: `IMG_<Number>.jpg` gives `Number = "1234"` for `IMG_1234.jpg` and matches nothing for `scan_99.jpg`
 
 ## Greedy Variables
 A greedy variable (marked with `*`) will match as much text as possible until reaching the next separator. This is useful when:
@@ -134,6 +153,18 @@ dotnet run --project benchmarks/UFP.Benchmarks --configuration Release
 # run a single benchmark class
 dotnet run --project benchmarks/UFP.Benchmarks --configuration Release -- --filter "*ModernParserBenchmarks*"
 ```
+
+### Results
+
+Mean time and allocated memory per single `Parse` call (BenchmarkDotNet 0.15.8, .NET 10.0.14 / RyuJIT x64, AMD Ryzen 7 7800X3D 4.20 GHz, Windows 10 22H2, 2026-11-04):
+
+| Benchmark | `UFP.NET` (`net10.0`) | `UFP.NET.Standard` (`netstandard2.0`) |
+| --- | ---: | ---: |
+| `Single` - `<Date>_<Name>.<Extension>` | 275.4 ns / 1.26 KB | 1.899 μs / 1.48 KB |
+| `MegaPattern` - three alternatives in one pattern | 918.4 ns / 4.3 KB | 8.676 μs / 5.07 KB |
+| `GreedyVariables` - `<Path*>/<Filename>.<Extension>` | 276.7 ns / 1.31 KB | 1.952 μs / 1.54 KB |
+
+The modern implementation is about 7x faster on single and greedy patterns and about 9.4x faster on mega patterns, while the allocated memory is almost the same in both implementations.
 
 ## Contributing
 

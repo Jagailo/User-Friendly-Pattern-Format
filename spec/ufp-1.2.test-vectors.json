@@ -1,0 +1,723 @@
+{
+  "specification": "UFP-1.2",
+  "description": "Conformance test vectors for the User Friendly Pattern format.",
+  "notes": "Every entry is a call Parse(value, pattern) and the map it must return. Implementations must not throw for any of these vectors. The order of keys inside 'expected' is irrelevant.",
+  "vectors": [
+    {
+      "id": "single-pattern-basic",
+      "description": "README example: date, name and extension",
+      "pattern": "<Date>_<Name>.<Extension>",
+      "value": "04-05-2024_scan.jpg",
+      "expected": {
+        "Date": "04-05-2024",
+        "Name": "scan",
+        "Extension": "jpg"
+      }
+    },
+    {
+      "id": "single-pattern-many-variables",
+      "description": "The value is cut by all separators in pattern order",
+      "pattern": "<Date> - <Patient.FirstName> <Patient.LastName>, <Patient.Gender>",
+      "value": "22-04-2024 - Alexey Yagelo, male",
+      "expected": {
+        "Date": "22-04-2024",
+        "Patient.FirstName": "Alexey",
+        "Patient.LastName": "Yagelo",
+        "Patient.Gender": "male"
+      }
+    },
+    {
+      "id": "single-variable-only",
+      "description": "A final variable takes the rest of the value",
+      "pattern": "<Value>",
+      "value": "any text here",
+      "expected": {
+        "Value": "any text here"
+      }
+    },
+    {
+      "id": "single-variable-empty-value",
+      "description": "A final variable may capture an empty string",
+      "pattern": "<Value>",
+      "value": "",
+      "expected": {
+        "Value": ""
+      }
+    },
+    {
+      "id": "variable-keeps-pipe",
+      "description": "A '|' inside the value is plain text for a single alternative",
+      "pattern": "<A>",
+      "value": "x|y|z",
+      "expected": {
+        "A": "x|y|z"
+      }
+    },
+    {
+      "id": "variable-names-are-trimmed",
+      "description": "Whitespace around a variable name is not part of the name",
+      "pattern": "<Date >_< Name>",
+      "value": "04-05-2024_scan",
+      "expected": {
+        "Date": "04-05-2024",
+        "Name": "scan"
+      }
+    },
+    {
+      "id": "adjacent-variables",
+      "description": "A variable followed directly by another variable is ignored",
+      "pattern": "<A><B>",
+      "value": "ab",
+      "expected": {
+        "B": "ab"
+      }
+    },
+    {
+      "id": "empty-variable-name",
+      "description": "An empty name is a legal variable name",
+      "pattern": "<>",
+      "value": "abc",
+      "expected": {
+        "": "abc"
+      }
+    },
+    {
+      "id": "empty-variable-name-in-the-middle",
+      "description": "Empty names take part in matching like any other name",
+      "pattern": "<Date>_<>.<Ext>",
+      "value": "a_b.c",
+      "expected": {
+        "Date": "a",
+        "": "b",
+        "Ext": "c"
+      }
+    },
+    {
+      "id": "empty-variable-name-overwritten",
+      "description": "A repeated empty name keeps the last value",
+      "pattern": "<>_<>",
+      "value": "a_b",
+      "expected": {
+        "": "b"
+      }
+    },
+    {
+      "id": "static-part-only",
+      "description": "A pattern without variables captures nothing",
+      "pattern": "abc",
+      "value": "abc",
+      "expected": {}
+    },
+    {
+      "id": "unclosed-variable",
+      "description": "An unclosed '<' at the end of a pattern turns the rest into a static part",
+      "pattern": "<Date>_<Name",
+      "value": "a_Name",
+      "expected": {
+        "Date": "a"
+      }
+    },
+    {
+      "id": "end-char-outside-variable",
+      "description": "A '>' outside a variable is dropped and the leading static part is consumed",
+      "pattern": "a>b<C>",
+      "value": "abX",
+      "expected": {
+        "C": "X"
+      }
+    },
+    {
+      "id": "start-char-inside-variable",
+      "description": "A '<' inside a variable is dropped",
+      "pattern": "<A<B>>",
+      "value": "X",
+      "expected": {
+        "AB": "X"
+      }
+    },
+    {
+      "id": "nested-brackets",
+      "description": "Nested brackets collapse into one variable",
+      "pattern": "<<A>>",
+      "value": "X",
+      "expected": {
+        "A": "X"
+      }
+    },
+    {
+      "id": "greedy-mark-inside-name",
+      "description": "Only a trailing '*' marks a variable as greedy",
+      "pattern": "<A*B>_<C>",
+      "value": "1_2",
+      "expected": {
+        "A*B": "1",
+        "C": "2"
+      }
+    },
+    {
+      "id": "greedy-mark-only-name",
+      "description": "One trailing '*' is removed from a name",
+      "pattern": "<**>_<B>",
+      "value": "1_2",
+      "expected": {
+        "*": "1",
+        "B": "2"
+      }
+    },
+    {
+      "id": "greedy-mark-after-space",
+      "description": "Trimming happens before '*' is removed, so '<A *>' keeps a trailing space",
+      "pattern": "<A *>_<B>",
+      "value": "1_2",
+      "expected": {
+        "A ": "1",
+        "B": "2"
+      }
+    },
+    {
+      "id": "greedy-path",
+      "description": "A greedy variable keeps intermediate separators",
+      "pattern": "<Path*>/<Filename>.<Extension>",
+      "value": "docs/reports/2024/annual_report.pdf",
+      "expected": {
+        "Path": "docs/reports/2024",
+        "Filename": "annual_report",
+        "Extension": "pdf"
+      }
+    },
+    {
+      "id": "non-greedy-path",
+      "description": "The same value without '*' stops at the first '/'",
+      "pattern": "<Folder>/<Filename>.<Extension>",
+      "value": "docs/reports/annual_report.pdf",
+      "expected": {
+        "Folder": "docs",
+        "Filename": "reports/annual_report",
+        "Extension": "pdf"
+      }
+    },
+    {
+      "id": "greedy-uid",
+      "description": "DICOM UID: a dotted value with a greedy variable",
+      "pattern": "<StudyUid*>.<Type>.<Extension>",
+      "value": "1.2.840.52394.3.152.235.2.12.187636473.patient.csv",
+      "expected": {
+        "StudyUid": "1.2.840.52394.3.152.235.2.12.187636473",
+        "Type": "patient",
+        "Extension": "csv"
+      }
+    },
+    {
+      "id": "greedy-dots",
+      "description": "A greedy variable moves the cut to the last occurrence of the following separator",
+      "pattern": "<A*>.<B>.<C>",
+      "value": "1.2.3.4",
+      "expected": {
+        "A": "1.2",
+        "B": "3",
+        "C": "4"
+      }
+    },
+    {
+      "id": "non-greedy-dots",
+      "description": "Without '*' the cut stays at the first occurrence",
+      "pattern": "<A>.<B>.<C>",
+      "value": "1.2.3.4",
+      "expected": {
+        "A": "1",
+        "B": "2",
+        "C": "3.4"
+      }
+    },
+    {
+      "id": "greedy-middle",
+      "description": "A greedy variable in the middle of a pattern",
+      "pattern": "<A*>_<B>",
+      "value": "a_b_c",
+      "expected": {
+        "A": "a_b",
+        "B": "c"
+      }
+    },
+    {
+      "id": "non-greedy-middle",
+      "description": "A greedy variable at the end of a pattern",
+      "pattern": "<A>_<B*>",
+      "value": "a_b_c",
+      "expected": {
+        "A": "a",
+        "B": "b_c"
+      }
+    },
+    {
+      "id": "greedy-mixed",
+      "description": "Greedy and non-greedy variables in one pattern",
+      "pattern": "<A*>_<B*>_<C>",
+      "value": "a_b_c_d",
+      "expected": {
+        "A": "a_b",
+        "B": "c",
+        "C": "d"
+      }
+    },
+    {
+      "id": "greedy-empty-segment",
+      "description": "A variable may capture an empty string",
+      "pattern": "<A*>.<B>.<C>",
+      "value": "1..2..3",
+      "expected": {
+        "A": "1..2",
+        "B": "",
+        "C": "3"
+      }
+    },
+    {
+      "id": "greedy-overlapping-occurrences",
+      "description": "A greedy cut stays to the left of the next separator occurrence",
+      "pattern": "<A*>ab<B>",
+      "value": "xabab",
+      "expected": {
+        "A": "xab",
+        "B": ""
+      }
+    },
+    {
+      "id": "non-greedy-overlapping-occurrences",
+      "description": "A non-greedy cut starts at the previous cut",
+      "pattern": "<A>ab<B>",
+      "value": "xabab",
+      "expected": {
+        "A": "x",
+        "B": "ab"
+      }
+    },
+    {
+      "id": "greedy-two-character-separator",
+      "description": "A greedy variable next to a two-character separator",
+      "pattern": "<A*>aa<B>",
+      "value": "xaaa",
+      "expected": {
+        "A": "xa",
+        "B": ""
+      }
+    },
+    {
+      "id": "greedy-whole-value",
+      "description": "A single greedy variable behaves like a single variable",
+      "pattern": "<A*>",
+      "value": "x",
+      "expected": {
+        "A": "x"
+      }
+    },
+    {
+      "id": "greedy-after-leading-static-part",
+      "description": "A leading static part is consumed and does not shift the separator that terminates a greedy variable",
+      "pattern": "_<A*>_<B>",
+      "value": "_a_b_c",
+      "expected": {
+        "A": "a_b",
+        "B": "c"
+      }
+    },
+    {
+      "id": "leading-static-part-is-consumed",
+      "description": "The leading static part is verified and consumed",
+      "pattern": "pre_<A>",
+      "value": "pre_abc",
+      "expected": {
+        "A": "abc"
+      }
+    },
+    {
+      "id": "leading-static-part-is-required",
+      "description": "A value that does not start with the leading static part does not match",
+      "pattern": "pre_<A>",
+      "value": "zzz_abc",
+      "expected": {}
+    },
+    {
+      "id": "leading-static-part-number",
+      "description": "A leading static part before a value",
+      "pattern": "IMG_<Number>.jpg",
+      "value": "IMG_1234.jpg",
+      "expected": {
+        "Number": "1234"
+      }
+    },
+    {
+      "id": "leading-static-part-required-number",
+      "description": "The number is not captured when the leading static part does not match",
+      "pattern": "IMG_<Number>.jpg",
+      "value": "scan_99.jpg",
+      "expected": {}
+    },
+    {
+      "id": "leading-static-part-must-be-prefix",
+      "description": "The leading static part must be a prefix, not just occur somewhere",
+      "pattern": "IMG_<Number>.jpg",
+      "value": "x_IMG_1.jpg",
+      "expected": {}
+    },
+    {
+      "id": "pattern-set-leading-static-part",
+      "description": "Only the alternative whose leading static part matches can win",
+      "pattern": "IMG_<Number>.jpg|scan_<Number>.jpg",
+      "value": "scan_99.jpg",
+      "expected": {
+        "Number": "99"
+      }
+    },
+    {
+      "id": "pattern-set-leading-static-part-no-match",
+      "description": "No alternative matches when no leading static part matches",
+      "pattern": "IMG_<Number>.jpg|scan_<Number>.jpg",
+      "value": "other_5.jpg",
+      "expected": {}
+    },
+    {
+      "id": "leading-static-part",
+      "description": "A leading static part, a variable and a separating static part",
+      "pattern": "pre_<A>x<B>",
+      "value": "pre_axb",
+      "expected": {
+        "A": "a",
+        "B": "b"
+      }
+    },
+    {
+      "id": "trailing-static-part-anchors",
+      "description": "A static part after the last variable anchors it but stays in the value",
+      "pattern": "<A>_<B>_",
+      "value": "1_2",
+      "expected": {}
+    },
+    {
+      "id": "trailing-static-part-found",
+      "description": "A trailing static part must be found to the left of the previous occurrence",
+      "pattern": "<A>.<B>.jpg",
+      "value": "x.png.jpg",
+      "expected": {
+        "A": "x",
+        "B": "png"
+      }
+    },
+    {
+      "id": "trailing-static-part-missing",
+      "description": "A missing trailing static part yields the variables captured so far",
+      "pattern": "<A>.<B>.jpg",
+      "value": "x.png",
+      "expected": {
+        "A": "x"
+      }
+    },
+    {
+      "id": "trailing-static-part-only",
+      "description": "A missing static part aborts before the first variable",
+      "pattern": "<A>.jpg",
+      "value": "x.png",
+      "expected": {}
+    },
+    {
+      "id": "static-part-spaces",
+      "description": "Spaces are ordinary static characters; the leading static part is consumed",
+      "pattern": " <A> _ <B> ",
+      "value": " x _ y ",
+      "expected": {
+        "A": "x",
+        "B": "y"
+      }
+    },
+    {
+      "id": "separator-order-matters",
+      "description": "Separators must appear in the value in pattern order",
+      "pattern": "<A>_<B>.<C>",
+      "value": "a.b_c",
+      "expected": {}
+    },
+    {
+      "id": "separator-order-matters-2",
+      "description": "A separator that only appears after a later separator is not found",
+      "pattern": "<A>-<B>_<C>",
+      "value": "y_z",
+      "expected": {}
+    },
+    {
+      "id": "empty-segments",
+      "description": "Both variables may be empty",
+      "pattern": "<A>_<B>",
+      "value": "_",
+      "expected": {
+        "A": "",
+        "B": ""
+      }
+    },
+    {
+      "id": "empty-first-segment",
+      "description": "The value starts with the separator",
+      "pattern": "<A>_<B>",
+      "value": "_x",
+      "expected": {
+        "A": "",
+        "B": "x"
+      }
+    },
+    {
+      "id": "empty-second-segment",
+      "description": "The value ends with the separator",
+      "pattern": "<A>_<B>",
+      "value": "x_",
+      "expected": {
+        "A": "x",
+        "B": ""
+      }
+    },
+    {
+      "id": "empty-value",
+      "description": "A separator can never be found in an empty value",
+      "pattern": "<Date>_<Name>",
+      "value": "",
+      "expected": {}
+    },
+    {
+      "id": "no-separators-in-value",
+      "description": "Nothing is captured when the first separator is missing",
+      "pattern": "<A>_<B>",
+      "value": "no separators at all",
+      "expected": {}
+    },
+    {
+      "id": "separator-at-start-of-value",
+      "description": "A separator at index 0 leaves no room for the separators to its left",
+      "pattern": "<A>_<B>_<C>",
+      "value": "_x",
+      "expected": {}
+    },
+    {
+      "id": "more-separators-than-value-can-hold",
+      "description": "A separator chain longer than the value returns the empty result",
+      "pattern": "<A>_<B>_<C>_<D>",
+      "value": "_x_y",
+      "expected": {}
+    },
+    {
+      "id": "dots-at-start-of-value",
+      "description": "An empty first segment is allowed when the chain still fits",
+      "pattern": "<A>.<B>.<C>",
+      "value": ".x.y",
+      "expected": {
+        "A": "",
+        "B": "x",
+        "C": "y"
+      }
+    },
+    {
+      "id": "separator-at-end-of-value",
+      "description": "A trailing separator that terminates a variable is consumed",
+      "pattern": "<A>_",
+      "value": "x_",
+      "expected": {
+        "A": "x"
+      }
+    },
+    {
+      "id": "separator-at-end-of-value-missing",
+      "description": "A missing trailing separator yields the empty result",
+      "pattern": "<A>_",
+      "value": "x",
+      "expected": {}
+    },
+    {
+      "id": "repeated-name-overwrites",
+      "description": "A repeated variable name keeps the last captured value",
+      "pattern": "<A>_<A>",
+      "value": "1_2",
+      "expected": {
+        "A": "2"
+      }
+    },
+    {
+      "id": "repeated-name-counted-once",
+      "description": "A repeated name counts as one captured variable",
+      "pattern": "<A>_<B>_<A>",
+      "value": "1_2_3",
+      "expected": {
+        "A": "3",
+        "B": "2"
+      }
+    },
+    {
+      "id": "mega-pattern-url",
+      "description": "Mega pattern: the URL alternative wins",
+      "pattern": "<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>",
+      "value": "https://youtu.be/KoFSQeOAYz4?t=10",
+      "expected": {
+        "Protocol": "https",
+        "Domain": "youtu.be",
+        "Page": "KoFSQeOAYz4",
+        "FirstParameter.Key": "t",
+        "FirstParameter.Value": "10"
+      }
+    },
+    {
+      "id": "mega-pattern-file-name",
+      "description": "Mega pattern: the file name alternative wins",
+      "pattern": "<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>",
+      "value": "04-05-2024_fh5_image.png",
+      "expected": {
+        "Date": "04-05-2024",
+        "Name": "fh5_image",
+        "Extension": "png"
+      }
+    },
+    {
+      "id": "mega-pattern-greedy",
+      "description": "Mega pattern: the greedy alternative wins",
+      "pattern": "<Protocol>://<Domain>/<Page>?<FirstParameter.Key>=<FirstParameter.Value>|<Date>_<Name>.<Extension>|<StudyUid*>.<Type>.<Extension>",
+      "value": "1.2.840.52394.3.152.235.2.12.187636473.patient.csv",
+      "expected": {
+        "StudyUid": "1.2.840.52394.3.152.235.2.12.187636473",
+        "Type": "patient",
+        "Extension": "csv"
+      }
+    },
+    {
+      "id": "mega-pattern-tie-takes-first",
+      "description": "Equal number of captured variables: the first alternative wins",
+      "pattern": "<A>|<B>",
+      "value": "x",
+      "expected": {
+        "A": "x"
+      }
+    },
+    {
+      "id": "mega-pattern-longer-alternative-wins",
+      "description": "The alternative in the middle captures more variables and wins",
+      "pattern": "<A>|<A>_<B>|<A>",
+      "value": "1_2",
+      "expected": {
+        "A": "1",
+        "B": "2"
+      }
+    },
+    {
+      "id": "mega-pattern-tie-takes-first-3",
+      "description": "A repeated name counts once, so both alternatives capture one variable",
+      "pattern": "<A>_<A>|<A>",
+      "value": "1_2",
+      "expected": {
+        "A": "2"
+      }
+    },
+    {
+      "id": "mega-pattern-more-variables-win",
+      "description": "The alternative that captures more variables wins",
+      "pattern": "<A>_<B>|<A>",
+      "value": "1_2",
+      "expected": {
+        "A": "1",
+        "B": "2"
+      }
+    },
+    {
+      "id": "mega-pattern-more-variables-win-2",
+      "description": "The alternative that matches first wins when it captures more variables",
+      "pattern": "<A>_<B>|<A>-<B>",
+      "value": "1-2",
+      "expected": {
+        "A": "1",
+        "B": "2"
+      }
+    },
+    {
+      "id": "mega-pattern-empty-alternatives-ignored",
+      "description": "Empty alternatives are skipped",
+      "pattern": "|<A>|",
+      "value": "x",
+      "expected": {
+        "A": "x"
+      }
+    },
+    {
+      "id": "mega-pattern-only-alternatives",
+      "description": "A pattern made of '|' only captures nothing",
+      "pattern": "||",
+      "value": "x",
+      "expected": {}
+    },
+    {
+      "id": "mega-pattern-empty",
+      "description": "An empty pattern captures nothing",
+      "pattern": "",
+      "value": "x",
+      "expected": {}
+    },
+    {
+      "id": "mega-pattern-pipe-only",
+      "description": "A single '|' captures nothing",
+      "pattern": "|",
+      "value": "x",
+      "expected": {}
+    },
+    {
+      "id": "case-sensitive-names",
+      "description": "Variable names are case-sensitive",
+      "pattern": "<a>_<B>",
+      "value": "Abc_def",
+      "expected": {
+        "a": "Abc",
+        "B": "def"
+      }
+    },
+    {
+      "id": "case-sensitive-separators",
+      "description": "Separators are compared case-sensitively",
+      "pattern": "<A>_<B>",
+      "value": "Abc_def",
+      "expected": {
+        "A": "Abc",
+        "B": "def"
+      }
+    },
+    {
+      "id": "unicode-separator",
+      "description": "A non-ASCII separator is a normal static part",
+      "pattern": "<A>→<B>",
+      "value": "x→y",
+      "expected": {
+        "A": "x",
+        "B": "y"
+      }
+    },
+    {
+      "id": "unicode-cyrillic",
+      "description": "Cyrillic values are captured unchanged",
+      "pattern": "<A>_<B>",
+      "value": "привет_мир",
+      "expected": {
+        "A": "привет",
+        "B": "мир"
+      }
+    },
+    {
+      "id": "unicode-surrogate-pairs",
+      "description": "Characters outside the BMP are not split",
+      "pattern": "<A>_<B>",
+      "value": "🙂_🙃",
+      "expected": {
+        "A": "🙂",
+        "B": "🙃"
+      }
+    },
+    {
+      "id": "unicode-ellipsis-separator",
+      "description": "A multi-byte separator is matched exactly",
+      "pattern": "<A>…<B>",
+      "value": "x…y",
+      "expected": {
+        "A": "x",
+        "B": "y"
+      }
+    }
+  ]
+}

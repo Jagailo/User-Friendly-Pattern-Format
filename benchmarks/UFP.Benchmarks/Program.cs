@@ -1,6 +1,5 @@
-using System;
-
 using BenchmarkDotNet.Running;
+using System;
 
 namespace UFP.Benchmarks
 {
@@ -10,7 +9,7 @@ namespace UFP.Benchmarks
         {
             if (Array.IndexOf(args, "--filter") < 0)
             {
-                args = [.. args, "--filter", "*"];
+                args = [ .. args, "--filter", "*" ];
             }
 
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
