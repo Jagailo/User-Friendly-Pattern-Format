@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UFP demo - User Friendly Pattern Format</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 90%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    h1 {
+      margin: 0 0 .25rem;
+      font-size: 1.35rem;
+    }
+
+    .intro {
+      max-width: 60rem;
+      margin: 0 0 1.5rem;
+      opacity: .75;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 .3rem;
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      opacity: .75;
+    }
+
+    #status {
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    input,
+    output,
+    textarea {
+      display: block;
+      width: 100%;
+      margin: 0 0 1.25rem;
+      padding: .55rem .7rem;
+      font: .95rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: inherit;
+      background: transparent;
+      border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+      border-radius: 6px;
+    }
+
+    textarea {
+      field-sizing: content;
+      min-height: 2.75rem;
+      resize: vertical;
+    }
+
+    output {
+      margin-bottom: 0;
+      padding: .8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    code {
+      font: .9em ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    :focus-visible {
+      outline: 2px solid #3b82f6;
+      outline-offset: 1px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>UFP - User Friendly Pattern Format</h1>
+  <p class="intro">
+    Type in either field: the text is parsed with the pattern on every change.
+    A name may contain dots - <code>&lt;Patient.FirstName&gt;</code> is one ordinary UFP name, and the result below is only grouped by those dots for readability.
+    The page runs the JavaScript port straight from <a href="../../src/UFP.JavaScript/ufp.js">UFP.JavaScript/ufp.js</a>.
+    See the <a href="https://github.com/Jagailo/User-Friendly-Pattern-Format/blob/main/docs/USER-GUIDE.md">user guide</a> for the pattern syntax.
+  </p>
+
+  <label for="pattern">Pattern</label>
+  <textarea id="pattern" rows="2" spellcheck="false">&lt;Patient.LastName&gt;_&lt;Patient.FirstName&gt;_&lt;Patient.BirthDate&gt;_&lt;Patient.Gender&gt;_&lt;Device.Manufacturer&gt;_&lt;Device.Type&gt;_&lt;Study.Date&gt;_&lt;Study.Time&gt;_&lt;SOPInstanceUID*&gt;.&lt;FileExtension&gt;</textarea>
+
+  <label for="value">Text to parse</label>
+  <textarea id="value" rows="2" spellcheck="false">IVANOVA_MARIA_19780412_F_SIEMENS_CT_20261102_073512_1.2.840.113619.2.55.3.20261102.073512.dcm</textarea>
+
+  <label for="result">Result <span id="status"></span></label>
+  <output id="result" for="pattern value"></output>
+
+  <script type="module">
+    const patternInput = document.getElementById("pattern");
+    const valueInput = document.getElementById("value");
+    const resultOutput = document.getElementById("result");
+    const status = document.getElementById("status");
+
+    let parse;
+    try {
+      ({ parse } = await import("../../src/UFP.JavaScript/ufp.js"));
+    } catch (error) {
+      // Browsers refuse module imports over file://, so the page must be served over HTTP.
+      status.textContent = "cannot load ufp.js - serve the repository root over HTTP (for example: python -m http.server), not file://";
+      throw error;
+    }
+
+    // A dotted name is one plain UFP name; the dots only group fields in this view.
+    function group(flat) {
+      const tree = Object.create(null);
+
+      for (const [name, value] of Object.entries(flat)) {
+        const parts = name.split(".");
+        let node = tree;
+
+        for (const part of parts.slice(0, -1)) {
+          if (typeof node[part] !== "object" || node[part] === null) {
+            node[part] = Object.create(null);
+          }
+          node = node[part];
+        }
+
+        node[parts[parts.length - 1]] = value;
+      }
+
+      return tree;
+    }
+
+    function render() {
+      const result = parse(valueInput.value, patternInput.value);
+      const names = Object.keys(result).length;
+
+      resultOutput.textContent = JSON.stringify(group(result), null, 2);
+      status.textContent = names === 0 ? "no match" : `${names} variable${names === 1 ? "" : "s"}`;
+    }
+
+    for (const field of [patternInput, valueInput]) {
+      field.addEventListener("input", render);
+
+      field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+    }
+
+    render();
+  </script>
+</body>
+
+</html>

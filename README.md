@@ -201,7 +201,7 @@ The modern .NET build is the fastest and the most allocation-light; .NET Standar
 | [`docs/`](docs) | Specification (English and Russian) and the end-user guide |
 | [`tests/`](tests) | Unit tests and conformance runners for every parser |
 | [`benchmarks/`](benchmarks) | Benchmark projects for every parser |
-| [`playground/`](playground) | A small .NET console app that prints the parsing result for a few patterns and values |
+| [`playground/`](playground) | A small .NET console app that prints the parsing result for a few patterns and values, and HTML live demo page |
 
 ## Contributing
 
