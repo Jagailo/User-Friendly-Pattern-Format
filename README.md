@@ -18,6 +18,8 @@ UFP is meant for the case when the pattern is written by the *end user*: a docto
 
 **Writing patterns yourself?** Start with the [user guide](docs/USER-GUIDE.md) - it takes about five minutes. Integrating UFP into an application or porting it to another language? Read the [specification](docs/SPECIFICATION.md), take the parser file for your language from the table below, and verify it with the [conformance suite](spec/README.md).
 
+**Want to try it first?** The [live demo](https://jagailo.github.io/User-Friendly-Pattern-Format/playground/UFP.HTML/) parses the text under a pattern as you type and shows the captured variables, with nothing to install.
+
 ## Why UFP
 
 | | Regular expressions | URI Templates (RFC 6570) | UFP |
