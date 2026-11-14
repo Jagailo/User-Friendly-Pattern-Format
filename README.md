@@ -98,8 +98,8 @@ Every implementation is a single dependency-free source file that passes the [co
 
 | Language | Platform | Parser file | Entry point |
 | --- | --- | --- | --- |
-| C# | .NET 10 (`net10.0`) | [`src/UFP.NET/UfpParser.cs`](src/UFP.NET/UfpParser.cs) | `UFP.NET.UfpParser.Parse` |
-| C# | .NET Standard 2.0 (`netstandard2.0`, C# 7.3) - .NET Framework 4.6.1+, UWP, Unity, Xamarin and other legacy targets | [`src/UFP.NET.Standard/UfpParser.cs`](src/UFP.NET.Standard/UfpParser.cs) | `UFP.NET.Standard.UfpParser.Parse` |
+| C# | .NET 10 | [`src/UFP.NET/UfpParser.cs`](src/UFP.NET/UfpParser.cs) | `UFP.NET.UfpParser.Parse` |
+| C# | .NET Standard 2.0 - .NET Framework 4.6.1+, UWP, Unity, Xamarin and other legacy targets | [`src/UFP.NET.Standard/UfpParser.cs`](src/UFP.NET.Standard/UfpParser.cs) | `UFP.NET.Standard.UfpParser.Parse` |
 | JavaScript | Node.js 20+, ES module | [`src/UFP.JavaScript/ufp.js`](src/UFP.JavaScript/ufp.js) | `parse` |
 | PHP | PHP 8.0+ | [`src/UFP.PHP/ufp.php`](src/UFP.PHP/ufp.php) | `UFP\parse` |
 | Python | Python 3.6+ | [`src/UFP.Python/ufp.py`](src/UFP.Python/ufp.py) | `parse` |
@@ -184,7 +184,7 @@ Mean time and memory per single `Parse` call. Scenarios: `Single` = `<Date>_<Nam
 
 | Implementation | `Single` | `MegaPattern` | `GreedyVariables` |
 | --- | ---: | ---: | ---: |
-| .NET 10 (`net10.0`) | 146.3 ns / 440 B | 342.6 ns / 664 B | 146.3 ns / 464 B |
+| .NET 10 | 146.3 ns / 440 B | 342.6 ns / 664 B | 146.3 ns / 464 B |
 | .NET Standard 2.0 | 164.2 ns / 864 B | 428.7 ns / 2.33 KB | 162.5 ns / 896 B |
 | JavaScript (Node.js 24) | 191.2 ns / 416 B | 512.8 ns / 1.16 KB | 182.4 ns / 416 B |
 | Python 3.15 | 709.9 ns / 361 B | 1664.2 ns / 387 B | 697.0 ns / 372 B |
