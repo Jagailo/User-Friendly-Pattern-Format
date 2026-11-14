@@ -20,8 +20,11 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
-          global-json-file: global.json
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'ga'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
